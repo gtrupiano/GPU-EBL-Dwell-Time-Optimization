@@ -39,6 +39,12 @@ def main():
         mode="same"
     )
 
+    # get error matrix
+    error_matrix = get_error(
+        deposited_energy,
+        exposure_map
+    )
+
     # Remove tiny negative FFT roundoff values.
     deposited_energy = np.clip(deposited_energy, 0.0, None)
 
@@ -56,7 +62,8 @@ def main():
     show_simulation(
         target_pattern,
         psf_kernel,
-        deposited_energy
+        deposited_energy,
+        error_matrix
     )
 
 
@@ -128,6 +135,19 @@ def validate_image_size(image):
 
 
 ###############################################################################
+# Function Name: get_error
+# Description:
+#     Creates the error matrix, the difference between the
+#     deposited_energy and the exposure_map
+###############################################################################
+
+def get_error(
+    deposited_energy,
+    exposure_map
+):
+    return deposited_energy - exposure_map
+
+###############################################################################
 # Function Name: print_simulation_information
 # Description:
 #     Prints the important simulation dimensions and numerical ranges.
@@ -166,11 +186,12 @@ def print_simulation_information(
 def show_simulation(
     target_pattern,
     psf_kernel,
-    deposited_energy
+    deposited_energy,
+    error_matrix
 ):
     figure, axes = plt.subplots(
         1,
-        3,
+        4,
         figsize=(16, 5),
         constrained_layout=True
     )
@@ -229,6 +250,23 @@ def show_simulation(
         developed_plot,
         ax=axes[2],
         label="Relative deposited energy"
+    )
+
+    error_plot = axes[3].imshow(
+        error_matrix,
+        cmap="plasma",
+        vmin=0.0,
+        vmax=1.0,
+        interpolation="bilinear"
+    )
+
+    axes[3].set_title("Error Matrix")
+    axes[3].set_xlabel("Column")
+    axes[3].set_ylabel("Row")
+    figure.colorbar(
+        error_plot,
+        ax=axes[3],
+        label="Error Matrix"
     )
 
     figure.savefig(
