@@ -12,21 +12,37 @@ INPUT_DATA_FOLDER_PATH = PYTHON_FOLDER_PATH / "input_data"
 DATA_OUTPUT_FOLDER_PATH = PYTHON_FOLDER_PATH / "output_data"
 
 
-# Double-Gaussian parameters:
-# 100 kV, 50 nm HSQ:
+# Double-Gaussian parameters (Later ALPHA, BETA, and N will be set to the values from the selections below):
+# Note: Values are from paper
+
+# 25 kV, 1um HSQ
+ALPHA_25KV_1UM = 0.2263
+BETA_25KV_1UM = 2.9986
+N_25KV_1UM = 1.1191
+
+# 100 kV, 1um HSQ
+ALPHA_100KV_1UM = 0.0482
+BETA_100KV_1UM = 29.7343
+N_100KV_1UM = 0.7237
+
+# 100 kV, 50nm HSQ
+ALPHA_100KV_50NM = 0.0024
+BETA_100KV_50NM = 27.8728
+N_100KV_50NM = 0.7183
 
 # Range of forward scattering
-ALPHA = 0.0024
+ALPHA = ALPHA_100KV_1UM
 
 # Range of backward scattering
-BETA = 27.8728
+BETA = BETA_100KV_1UM
 
 # Ratio of total energy deposited
-N = 0.7183
+N = N_100KV_1UM
 
-# The 512x512 layout represents a 1 µm x 1 µm area.
+
+# The 128x128 layout represents a 1 µm x 1 µm area.
 IMAGE_WIDTH_UM = 1.0
-IMAGE_SIZE_PIXELS = 512
+IMAGE_SIZE_PIXELS = 128
 
 # Physical distance represented by one image pixel.
 PIXEL_SIZE_UM = IMAGE_WIDTH_UM / IMAGE_SIZE_PIXELS
@@ -35,7 +51,7 @@ PIXEL_SIZE_UM = IMAGE_WIDTH_UM / IMAGE_SIZE_PIXELS
 MASK_SIZE = 65
 
 # Input paths
-IC_IMAGE_PATH = INPUT_DATA_FOLDER_PATH / "IC512.png"
+IC_IMAGE_PATH = INPUT_DATA_FOLDER_PATH / "IC128.png"
 
 # PSF output paths
 PSF_1D_OUTPUT_IMAGE_PATH = DATA_OUTPUT_FOLDER_PATH / "double_gaussian_psf_1D.png"

@@ -27,12 +27,16 @@ import constants
 # f(r) = (1 / (pi * (1+n))) * (((1/(a^2) * e^(-r^2/a^2)) + ((n/(b^2) * e^(-r^2/b^2)))
 
 
+###############################################################################
+# GLOBAL FUNCTIONS
+###############################################################################
+
 def main():
     # Verifying output data has a place to be stored
     constants.DATA_OUTPUT_FOLDER_PATH.mkdir(parents=True, exist_ok=True)
 
     # Generates 1,000 distances from the beam center, ranging from
-    # 0.001 µm to 100 µm, with the exponents evenly spaced.
+    # 0.001 um to 100 um, with the exponents evenly spaced.
     r_values = np.logspace(-3, 2, 1000) # Radial distance from point of exposure
 
     psf_values = populate_psf_list(r_values)
@@ -132,7 +136,7 @@ def show_1D_psf_values(r_values, psf_values):
     plt.loglog(r_values, psf_values)
 
     plt.title("Double-Gaussian PSF")
-    plt.xlabel("Radius r (µm)")
+    plt.xlabel("Radius r (um)")
     plt.ylabel("Energy density")
     plt.grid(True)
 
