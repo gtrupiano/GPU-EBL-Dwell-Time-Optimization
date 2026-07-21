@@ -89,8 +89,8 @@ for index = 1:100
     ylabel("MSE")
 
     % Adjust IC
-    % ICAdjusted = arrayfun(@updateIC, errorMatrix, ICAdjusted, rand(128)./10);
-    ICAdjusted = arrayfun(@updateIC2, errorMatrix, ICAdjusted);
+    ICAdjusted = arrayfun(@updateIC, errorMatrix, ICAdjusted, rand(128)./10);
+    % ICAdjusted = arrayfun(@updateIC2, errorMatrix, ICAdjusted);
 
     subplot(2,2,3)
     imshow(ICAdjusted, [0 255])
