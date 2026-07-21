@@ -61,3 +61,16 @@ PSF_2D_OUTPUT_IMAGE_PATH = DATA_OUTPUT_FOLDER_PATH / "double_gaussian_psf_2D.png
 # Exposure simulation output paths
 DEPOSITED_ENERGY_OUTPUT_DATA_PATH = DATA_OUTPUT_FOLDER_PATH / "deposited_energy.npy"
 DEPOSITED_ENERGY_OUTPUT_IMAGE_PATH = DATA_OUTPUT_FOLDER_PATH / "deposited_energy.png"
+
+
+# Dwell Time Iteration Variables
+MAX_ITERATIONS = 1000
+
+# Controls how much the dwell time changes during each iteration.
+LEARNING_RATE = 0.1
+
+# Maximum relative dwell-time value.
+MAX_DWELL_TIME = 3.0
+
+MINIMUM_MSE = 0.000001
+MINIMUM_MSE_CHANGE = 0.00000001
