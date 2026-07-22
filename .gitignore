@@ -1,4 +1,10 @@
-.venv
+# Main Project Items
+libwb/
+build/
+.vscode/
+
+# Python Proof of Concept Items
 .DS_Store
+.venv
 __pycache__/
 output_data/
