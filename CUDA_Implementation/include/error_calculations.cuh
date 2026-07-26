@@ -1,7 +1,7 @@
 /*
  ******************************************************************************
-    File Name  : error_calculations.cuh
-    Description:
+   File Name  : error_calculations.cuh
+   Description:
  ******************************************************************************
 */
   
@@ -20,6 +20,9 @@
  ******************************************************************************
 */
 
+const uint ERROR_BLOCK_WIDTH = 16;
+const uint ERROR_BLOCK_HEIGHT = 16;
+const uint ERROR_BLOCK_SIZE = ERROR_BLOCK_WIDTH * ERROR_BLOCK_HEIGHT;
 
 /*
  ******************************************************************************
@@ -33,4 +36,13 @@
  ******************************************************************************
 */
 
-#endif ERROR_CALCULATIONS_CUH
+float calculateError(
+	float *deviceIcLayout,
+	float *deviceDepositedEnergy,
+	uint imageWidth,
+	uint imageHeight,
+	float *deviceErrorMatrix,
+	float *deviceSquaredErrorSum
+);
+
+#endif // ERROR_CALCULATIONS_CUH
