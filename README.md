@@ -22,8 +22,8 @@ GPU-EBL-Dwell-Time-Optimization/
 ├── CUDA_Implementation/
 |   ├── build/
 |   ├── include/
-    ├── src/
-    CMakeLists.txt
+|   ├── src/
+|   CMakeLists.txt
     
 ```
 
@@ -48,6 +48,6 @@ From the root of this repository, execute the following:
 cd libwb
 mkdir build
 cd build
-cmake ..
+cmake ../
 make
 ```
