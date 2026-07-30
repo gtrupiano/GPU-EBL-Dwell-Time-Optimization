@@ -13,6 +13,7 @@
  
 #include <wb.h>
 #include "convolution.cuh"
+#include "dwell_time_update.cuh"
 
 /*
  **********************************************************************

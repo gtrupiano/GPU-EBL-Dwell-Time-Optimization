@@ -20,6 +20,8 @@
  ******************************************************************************
 */
 
+#define DWELL_BLOCK_WIDTH 16
+#define DWELL_BLOCK_HEIGHT 16
 
 /*
  ******************************************************************************
@@ -32,6 +34,13 @@
  * GLOBAL FUNCTION PROTOTYPES
  ******************************************************************************
 */
+void updateDwellTime(
+    float *deviceDwellTimeMap,
+    const float *deviceErrorMap,
+    uint imageWidth,
+    uint imageHeight,
+    float learningRate,
+    float maxDwellTime
+);
 
-
-#endif DWELL_TIME_UPDATE_CUH
+#endif // DWELL_TIME_UPDATE_CUH
