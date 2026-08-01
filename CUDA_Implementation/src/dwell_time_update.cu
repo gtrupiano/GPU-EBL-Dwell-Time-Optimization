@@ -10,8 +10,9 @@
  * INCLUDES
  **********************************************************************
 */
-#include <wb.h>
+
 #include "dwell_time_update.cuh"
+#include "convolution.cuh"
 
 /*
  **********************************************************************
@@ -44,14 +45,14 @@
  * LOCAL FUNCTION PROTOTYPES (declare as static)
  **********************************************************************
 */
-__global__ void dwellTimeUpdateKernel(	
-	float *deviceDwellTimeMap, 
-	const float *deviceErrorMap, 
-	uint imageWidth, 
-	uint imageHeight, 
-	float learningRate, 
-	float maxDwellTime
 
+static __global__ void dwellTimeUpdateKernel(
+    float *deviceDwellTimeMap,
+    float *deviceDwellTimeCorrection,
+    uint imageWidth,
+    uint imageHeight,
+    float learningRate,
+    float maxDwellTime
 );
 
 /*
@@ -59,53 +60,82 @@ __global__ void dwellTimeUpdateKernel(
  * GLOBAL FUNCTIONS
  **********************************************************************
 */
+
+/**************************************************
+ * Kernel: updateDwellTime
+ * Description: 
+**************************************************/
+
 void updateDwellTime(
-	float *deviceDwellTimeMap, 
-	const float *deviceErrorMap, 
-	uint imageWidth, 
-	uint imageHeight, 
-	float learningRate, 
-	float maxDwellTime
+    float *deviceDwellTimeMap,
+    float *deviceErrorMap,
+    const float *__restrict__ devicePsfMask,
+    float *deviceDwellTimeCorrection,
+    uint imageWidth,
+    uint imageHeight,
+    float learningRate,
+    float maxDwellTime
 )
 {
+    // Calculate the dwell-time correction:
+    // dwellTimeCorrection = errorMap * PSF
+
     // Threads per block value for each dimension used
-    dim3 blockSize(DWELL_BLOCK_WIDTH, DWELL_BLOCK_HEIGHT, 1);
+    dim3 convolutionBlockSize(CONVOLUTION_OUTPUT_TILE_WIDTH, CONVOLUTION_OUTPUT_TILE_WIDTH, 1);
 
     // Calculate grid size (number of blocks)
-	uint blocksPerDimX = (imageWidth + DWELL_BLOCK_WIDTH - 1) / DWELL_BLOCK_WIDTH;
-	uint blocksPerDimY = (imageHeight + DWELL_BLOCK_HEIGHT - 1) / DWELL_BLOCK_HEIGHT;
+    unsigned int convolutionBlocksPerDimX = (imageWidth + CONVOLUTION_OUTPUT_TILE_WIDTH - 1) / CONVOLUTION_OUTPUT_TILE_WIDTH;
+    unsigned int convolutionBlocksPerDimY = (imageHeight + CONVOLUTION_OUTPUT_TILE_WIDTH - 1) / CONVOLUTION_OUTPUT_TILE_WIDTH;
+
+    dim3 convolutionNumberOfBlocks(convolutionBlocksPerDimX, convolutionBlocksPerDimY, 1);
+
+    convolutionKernel<<<convolutionNumberOfBlocks, convolutionBlockSize>>>(
+        deviceErrorMap,
+        imageWidth,
+        imageHeight,
+        devicePsfMask,
+        deviceDwellTimeCorrection
+    );
+
+
+    // Apply the correction to the dwell-time map.
+
+    // Threads per block value for each dimension used
+    dim3 dwellBlockSize(DWELL_BLOCK_WIDTH, DWELL_BLOCK_HEIGHT, 1);
+
+    // Calculate grid size (number of blocks)
+	uint dwellBlocksPerDimX = (imageWidth + DWELL_BLOCK_WIDTH - 1) / DWELL_BLOCK_WIDTH;
+	uint dwellBlocksPerDimY = (imageHeight + DWELL_BLOCK_HEIGHT - 1) / DWELL_BLOCK_HEIGHT;
 
 	// establish number of blocks
-	dim3 numberOfBlocks(blocksPerDimX, blocksPerDimY, 1);
+	dim3 dwellNumberOfBlocks(dwellBlocksPerDimX, dwellBlocksPerDimY, 1);
 
 	// launch kernel in host wrapper code
-	dwellTimeUpdateKernel<<<numberOfBlocks, blockSize>>>(
-		deviceDwellTimeMap, 
-		deviceErrorMap, 
-		imageWidth, 
-		imageHeight, 
-		learningRate, 
-		maxDwellTime
-	);
+	dwellTimeUpdateKernel<<<dwellNumberOfBlocks, dwellBlockSize>>>(
+        deviceDwellTimeMap,
+        deviceDwellTimeCorrection,
+        imageWidth,
+        imageHeight,
+        learningRate,
+        maxDwellTime
+    );
 }
+
 
 /**************************************************
  * Kernel: dwellTimeUpdateKernel
  * Description: 
 **************************************************/
 
-__global__ void dwellTimeUpdateKernel(	
+static __global__ void dwellTimeUpdateKernel(	
 	float *deviceDwellTimeMap, 
-	const float *deviceErrorMap, 
+	float *deviceDwellTimeCorrection, 
 	uint imageWidth, 
 	uint imageHeight, 
 	float learningRate, 
 	float maxDwellTime
-
 )
 {
-
-
 	// find the 2D coordinates
 	uint rowIdx = (blockIdx.y * blockDim.y) + threadIdx.y;
     uint colIdx = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -114,32 +144,23 @@ __global__ void dwellTimeUpdateKernel(
 	uint globalPixelIdx1D = colIdx + rowIdx * imageWidth;
 
 	// boundary checking
-	if(rowIdx < imageHeight && colIdx < imageWidth){  
+	if(rowIdx < imageHeight && colIdx < imageWidth)
+    {  
+        float currentDwell = deviceDwellTimeMap[globalPixelIdx1D];
+        float dwellTimeCorrection = deviceDwellTimeCorrection[globalPixelIdx1D];
 
-            float currentDwell = deviceDwellTimeMap[globalPixelIdx1D];
+        float updatedDwell = currentDwell + (dwellTimeCorrection * learningRate);
+        
+        if(updatedDwell < 0.0f)
+        {
+            updatedDwell = 0.0f;
 
-            float error = deviceErrorMap[globalPixelIdx1D];
+        }
+        else if(updatedDwell > maxDwellTime)
+        {
+            updatedDwell = maxDwellTime;
+        }
 
-            float updatedDwell = currentDwell + (error * learningRate);
-
-            if(updatedDwell < 0.0f){
-
-                updatedDwell = 0.0f;
-
-            }else if(updatedDwell > maxDwellTime){
-
-                updatedDwell = maxDwellTime;
-
-            }
-
-			deviceDwellTimeMap[globalPixelIdx1D] = updatedDwell;
-
-        } 
-
-
-
-
-
-
-
+        deviceDwellTimeMap[globalPixelIdx1D] = updatedDwell;
+    } 
 }

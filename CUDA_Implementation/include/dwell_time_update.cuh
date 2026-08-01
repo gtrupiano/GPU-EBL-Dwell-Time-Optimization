@@ -34,11 +34,14 @@
  * GLOBAL FUNCTION PROTOTYPES
  ******************************************************************************
 */
+
 void updateDwellTime(
     float *deviceDwellTimeMap,
-    const float *deviceErrorMap,
-    uint imageWidth,
-    uint imageHeight,
+    float *deviceErrorMap,
+    const float *__restrict__ devicePsfMask,
+    float *deviceDwellTimeCorrection,
+    unsigned int imageWidth,
+    unsigned int imageHeight,
     float learningRate,
     float maxDwellTime
 );
