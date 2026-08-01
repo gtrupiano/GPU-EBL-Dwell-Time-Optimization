@@ -20,6 +20,8 @@
  ******************************************************************************
 */
 
+#define DWELL_BLOCK_WIDTH 16
+#define DWELL_BLOCK_HEIGHT 16
 
 /*
  ******************************************************************************
@@ -33,5 +35,15 @@
  ******************************************************************************
 */
 
+void updateDwellTime(
+    float *deviceDwellTimeMap,
+    float *deviceErrorMap,
+    const float *__restrict__ devicePsfMask,
+    float *deviceDwellTimeCorrection,
+    unsigned int imageWidth,
+    unsigned int imageHeight,
+    float learningRate,
+    float maxDwellTime
+);
 
-#endif DWELL_TIME_UPDATE_CUH
+#endif // DWELL_TIME_UPDATE_CUH
