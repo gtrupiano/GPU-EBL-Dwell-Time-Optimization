@@ -37,8 +37,8 @@ const uint ERROR_BLOCK_SIZE = ERROR_BLOCK_WIDTH * ERROR_BLOCK_HEIGHT;
 */
 
 float calculateError(
-	float *deviceIcLayout,
-	float *deviceDepositedEnergy,
+	const float *deviceTargetLayout,
+	const float *deviceDepositedEnergy,
 	uint imageWidth,
 	uint imageHeight,
 	float *deviceErrorMatrix,

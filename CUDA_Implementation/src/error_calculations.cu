@@ -47,25 +47,25 @@
 
 // Functions
 static void calculateErrorMatrix(
-   float *deviceIcLayout,
-   float *deviceDepositedEnergy,
-   uint imageWidth,
-   uint imageHeight,
-   float *deviceErrorMatrix,
-   float *deviceSquaredErrorSum
+    const float *deviceTargetLayout,
+    const float *deviceDepositedEnergy,
+    uint imageWidth,
+    uint imageHeight,
+    float *deviceErrorMatrix,
+    float *deviceSquaredErrorSum
 );
 
 static float calculateMSE(
-   float *deviceSquaredErrorSum,
+   const float *deviceSquaredErrorSum,
    uint imageWidth,
    uint imageHeight
 );
 
 
 // Kernels
-__global__ void errorMatrixCalculationKernel(
-   float *icLayout,
-   float *depositedEnergy,
+static __global__ void errorMatrixCalculationKernel(
+   const float *icLayout,
+   const float *depositedEnergy,
    uint imageWidth,
    uint imageHeight,
    float *errorMatrix,
@@ -84,8 +84,8 @@ __global__ void errorMatrixCalculationKernel(
 **************************************************/
 
 float calculateError(
-	float *deviceIcLayout,
-	float *deviceDepositedEnergy,
+	const float *deviceTargetLayout,
+	const float *deviceDepositedEnergy,
 	uint imageWidth,
 	uint imageHeight,
 	float *deviceErrorMatrix,
@@ -93,7 +93,7 @@ float calculateError(
 )
 {
 	calculateErrorMatrix(
-		deviceIcLayout,
+		deviceTargetLayout,
         deviceDepositedEnergy,
         imageWidth,
         imageHeight,
@@ -123,8 +123,8 @@ float calculateError(
 **************************************************/
 
 static void calculateErrorMatrix(
-	float *deviceIcLayout,
-	float *deviceDepositedEnergy,
+	const float *deviceTargetLayout,
+	const float *deviceDepositedEnergy,
 	uint imageWidth,
 	uint imageHeight,
 	float *deviceErrorMatrix,
@@ -147,7 +147,7 @@ static void calculateErrorMatrix(
 
 	// Launching kernel
     errorMatrixCalculationKernel<<<numberOfBlocks, blockSize>>>(
-        deviceIcLayout,
+        deviceTargetLayout,
         deviceDepositedEnergy,
         imageWidth,
         imageHeight,
@@ -163,7 +163,7 @@ static void calculateErrorMatrix(
 **************************************************/
 
 static float calculateMSE(
-    float *deviceSquaredErrorSum,
+    const float *deviceSquaredErrorSum,
     uint imageWidth,
     uint imageHeight
 )
@@ -196,9 +196,9 @@ static float calculateMSE(
  * Description: 
 **************************************************/
 
-__global__ void errorMatrixCalculationKernel(
-   float *icLayout,
-   float *depositedEnergy,
+static __global__ void errorMatrixCalculationKernel(
+   const float *targetLayout,
+   const float *depositedEnergy,
    uint imageWidth,
    uint imageHeight,
    float *errorMatrix,
@@ -224,7 +224,7 @@ __global__ void errorMatrixCalculationKernel(
 	if(rowIdx < imageHeight && colIdx < imageWidth)
 	{		
 		// Calculating error between expected vs actual
-		float error = icLayout[globalPixelIdx1D] - depositedEnergy[globalPixelIdx1D];
+		float error = targetLayout[globalPixelIdx1D] - depositedEnergy[globalPixelIdx1D];
 
 		// Updating error matrix with error
 		errorMatrix[globalPixelIdx1D] = error;
