@@ -48,7 +48,7 @@
 
 static __global__ void dwellTimeUpdateKernel(
     float *deviceDwellTimeMap,
-    float *deviceDwellTimeCorrection,
+    const float *deviceDwellTimeCorrection,
     uint imageWidth,
     uint imageHeight,
     float learningRate,
@@ -68,8 +68,8 @@ static __global__ void dwellTimeUpdateKernel(
 
 void updateDwellTime(
     float *deviceDwellTimeMap,
-    float *deviceErrorMap,
-    const float *__restrict__ devicePsfMask,
+    const float *deviceErrorMap,
+    const float *devicePsfMask,
     float *deviceDwellTimeCorrection,
     uint imageWidth,
     uint imageHeight,
@@ -80,23 +80,13 @@ void updateDwellTime(
     // Calculate the dwell-time correction:
     // dwellTimeCorrection = errorMap * PSF
 
-    // Threads per block value for each dimension used
-    dim3 convolutionBlockSize(CONVOLUTION_OUTPUT_TILE_WIDTH, CONVOLUTION_OUTPUT_TILE_WIDTH, 1);
-
-    // Calculate grid size (number of blocks)
-    unsigned int convolutionBlocksPerDimX = (imageWidth + CONVOLUTION_OUTPUT_TILE_WIDTH - 1) / CONVOLUTION_OUTPUT_TILE_WIDTH;
-    unsigned int convolutionBlocksPerDimY = (imageHeight + CONVOLUTION_OUTPUT_TILE_WIDTH - 1) / CONVOLUTION_OUTPUT_TILE_WIDTH;
-
-    dim3 convolutionNumberOfBlocks(convolutionBlocksPerDimX, convolutionBlocksPerDimY, 1);
-
-    convolutionKernel<<<convolutionNumberOfBlocks, convolutionBlockSize>>>(
+    convolveImage(
         deviceErrorMap,
         imageWidth,
         imageHeight,
         devicePsfMask,
         deviceDwellTimeCorrection
     );
-
 
     // Apply the correction to the dwell-time map.
 
@@ -129,7 +119,7 @@ void updateDwellTime(
 
 static __global__ void dwellTimeUpdateKernel(	
 	float *deviceDwellTimeMap, 
-	float *deviceDwellTimeCorrection, 
+	const float *deviceDwellTimeCorrection, 
 	uint imageWidth, 
 	uint imageHeight, 
 	float learningRate, 
