@@ -44,11 +44,58 @@
 **********************************************************************
 */
 
+static __global__ void convolutionKernel(
+   const float *inputImage,
+   uint imageWidth,
+   uint imageHeight,
+   const float *mask,
+   float *outputImage
+);
 
 /*
 **********************************************************************
 * GLOBAL FUNCTIONS
 **********************************************************************
+*/
+
+/**************************************************
+* Kernel: convolveImage
+* Description:
+**************************************************/
+
+void convolveImage(
+    const float *deviceInputImage,
+    uint imageWidth,
+    uint imageHeight,
+    const float *devicePsfMask,
+    float *deviceOutputImage
+)
+{
+    // Threads per block value for each dimention used
+    dim3 blockSize(CONVOLUTION_OUTPUT_TILE_WIDTH, CONVOLUTION_OUTPUT_TILE_WIDTH, 1);
+
+	// Grid size
+    // There needs to be enough threads for each row,col of the matrix.
+    // So by dividing length of matrix / threadsPerBlock, it should yield number of blocks.
+    // Rounding up is needed (integer based rounding
+    uint blocksPerDimX = (imageWidth + CONVOLUTION_OUTPUT_TILE_WIDTH - 1) / CONVOLUTION_OUTPUT_TILE_WIDTH;
+    uint blocksPerDimY = (imageHeight + CONVOLUTION_OUTPUT_TILE_WIDTH - 1) / CONVOLUTION_OUTPUT_TILE_WIDTH;
+    dim3 numberOfBlocks(blocksPerDimX, blocksPerDimY, 1);
+
+    convolutionKernel<<<numberOfBlocks, blockSize>>>(
+      deviceInputImage,
+      imageWidth,
+      imageHeight,
+      devicePsfMask,
+      deviceOutputImage
+   );
+}
+
+
+/*
+ **********************************************************************
+ * LOCAL FUNCTIONS
+ **********************************************************************
 */
 
 
@@ -57,11 +104,11 @@
 * Description:
 **************************************************/
 
-__global__ void convolutionKernel(
-   float *inputImage,
-   int imageWidth,
-   int imageHeight,
-   const float *__restrict__ mask,
+static __global__ void convolutionKernel(
+   const float *inputImage,
+   uint imageWidth,
+   uint imageHeight,
+   const float *mask,
    float *outputImage
 )
 {
