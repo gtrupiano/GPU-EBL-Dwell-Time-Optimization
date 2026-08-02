@@ -37,11 +37,11 @@
 
 void updateDwellTime(
     float *deviceDwellTimeMap,
-    float *deviceErrorMap,
-    const float *__restrict__ devicePsfMask,
+    const float *deviceErrorMap,
+    const float *devicePsfMask,
     float *deviceDwellTimeCorrection,
-    unsigned int imageWidth,
-    unsigned int imageHeight,
+    uint imageWidth,
+    uint imageHeight,
     float learningRate,
     float maxDwellTime
 );

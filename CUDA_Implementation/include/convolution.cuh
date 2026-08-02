@@ -43,13 +43,12 @@ const uint CONVOLUTION_INPUT_TILE_WIDTH = (CONVOLUTION_OUTPUT_TILE_WIDTH + CONVO
 ******************************************************************************
 */
 
-__global__ void convolutionKernel(
-   float *inputImage,
-   int imageWidth,
-   int imageHeight,
-   const float *__restrict__ mask,
-   float *outputImage
+void convolveImage(
+   const float *deviceInputImage,
+   uint imageWidth,
+   uint imageHeight,
+   const float *devicePsfMask,
+   float *deviceOutputImage
 );
-
 
 #endif // CONVOLUTION_CUH

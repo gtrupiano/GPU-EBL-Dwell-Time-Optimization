@@ -38,6 +38,7 @@ link_directories(${LIBWB_LIB_DIR})
 set(CUDA_NVCC_FLAGS_DEBUG ${CUDA_NVCC_FLAGS_DEBUG} "--use_fast_math")
 
 # Add additional source files below
+include_directories(include)
 cuda_add_executable(
     GPU_EBL_Dwell_Time_Optimization
 
@@ -45,9 +46,5 @@ cuda_add_executable(
     src/convolution.cu
     src/dwell_time_update.cu
     src/error_calculations.cu
-
-    include/convolution.cuh
-    include/dwell_time_update.cuh
-    include/error_calculations.cuh
 )
 target_link_libraries(GPU_EBL_Dwell_Time_Optimization wb rt)
