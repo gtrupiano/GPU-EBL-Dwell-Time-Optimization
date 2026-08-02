@@ -62,13 +62,13 @@ static __global__ void dwellTimeUpdateKernel(
 */
 
 /**************************************************
- * Kernel: updateDwellTime
+ * Function: updateDwellTime
  * Description: 
 **************************************************/
 
 void updateDwellTime(
     float *deviceDwellTimeMap,
-    const float *deviceErrorMap,
+    const float *deviceErrorMatrix,
     const float *devicePsfMask,
     float *deviceDwellTimeCorrection,
     uint imageWidth,
@@ -81,7 +81,7 @@ void updateDwellTime(
     // dwellTimeCorrection = errorMap * PSF
 
     convolveImage(
-        deviceErrorMap,
+        deviceErrorMatrix,
         imageWidth,
         imageHeight,
         devicePsfMask,
