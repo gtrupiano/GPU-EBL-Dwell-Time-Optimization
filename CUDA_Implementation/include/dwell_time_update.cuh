@@ -37,7 +37,7 @@
 
 void updateDwellTime(
     float *deviceDwellTimeMap,
-    const float *deviceErrorMap,
+    const float *deviceErrorMatrix,
     const float *devicePsfMask,
     float *deviceDwellTimeCorrection,
     uint imageWidth,
