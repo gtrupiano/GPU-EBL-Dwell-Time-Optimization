@@ -2,9 +2,10 @@
 Information regarding what the goal of the project is as well as what was done to get it working properly.
 
 ## Notes
-1. IC layout needs to be a 1 channel .ppm image **(need a way to convert different sized ones into .ppm)**
-2. PSF mask needs to be a .raw file **(need a way to convert gausian parameter masks into .raw)**
-3. The output will be a .raw file
+1. **Create a `output_data` folder before running program in order for data to be properly stored**
+2. IC layout needs to be a 1 channel .ppm image **(need a way to convert different sized ones into .ppm)**
+3. PSF mask needs to be a .raw file **(need a way to convert gausian parameter masks into .raw)**
+4. The output will be a .raw file
     - **In order to see it visually, it will need to be converted to a .png manually (or some Python script)**
 
 ## Task
