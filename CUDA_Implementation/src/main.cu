@@ -274,7 +274,7 @@ static void copyDataToDevice(void)
     cudaCheck(cudaMemcpy(devicePsfMask, hostPsfMask, sizeOfPsfMask, cudaMemcpyHostToDevice));
 
     // Initialize dwell-time map using the target layout
-    cudaCheck(cudaMemcpy(deviceDwellTimeMap, deviceTargetLayout, sizeOfTargetLayout, cudaMemcpyHostToDevice));
+    cudaCheck(cudaMemcpy(deviceDwellTimeMap, deviceTargetLayout, sizeOfTargetLayout, cudaMemcpyDeviceToDevice));
 }
 
 
