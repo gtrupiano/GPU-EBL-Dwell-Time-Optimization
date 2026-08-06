@@ -11,6 +11,12 @@ PYTHON_FOLDER_PATH = SRC_FOLDER_PATH.parent
 INPUT_DATA_FOLDER_PATH = PYTHON_FOLDER_PATH / "input_data"
 DATA_OUTPUT_FOLDER_PATH = PYTHON_FOLDER_PATH / "output_data"
 
+# CUDA implementation data folders (used by the data conversion tools)
+REPO_ROOT_PATH = PYTHON_FOLDER_PATH.parent.parent
+CUDA_IMPLEMENTATION_FOLDER_PATH = REPO_ROOT_PATH / "CUDA_Implementation"
+CUDA_INPUT_DATA_FOLDER_PATH = CUDA_IMPLEMENTATION_FOLDER_PATH / "input_data"
+CUDA_OUTPUT_DATA_FOLDER_PATH = CUDA_IMPLEMENTATION_FOLDER_PATH / "output_data"
+
 
 # Double-Gaussian parameters (Later ALPHA, BETA, and N will be set to the values from the selections below):
 # Note: Values are from paper

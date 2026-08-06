@@ -3,10 +3,15 @@ Information regarding what the goal of the project is as well as what was done t
 
 ## Notes
 1. **Create a `output_data` folder before running program in order for data to be properly stored**
-2. IC layout needs to be a 1 channel .ppm image **(need a way to convert different sized ones into .ppm)**
-3. PSF mask needs to be a .raw file **(need a way to convert gausian parameter masks into .raw)**
+2. IC layout needs to be a 1 channel .ppm image
+    - Convert any image into the required `P5` .ppm with `Proof_Of_Concept/Python/src/convert_ic_to_ppm.py`
+        - Example: `python convert_ic_to_ppm.py IC512.png --size 128 --binarize`
+3. PSF mask needs to be a .raw file
+    - Generate the double-Gaussian mask as a libwb .raw with `Proof_Of_Concept/Python/src/convert_psf_to_raw.py`
+        - Example: `python convert_psf_to_raw.py` (defaults to a normalized 65x65 `PSF_Mask_65x65.raw`)
 4. The output will be a .raw file
-    - **In order to see it visually, it will need to be converted to a .png manually (or some Python script)**
+    - Convert it to a viewable .png with `Proof_Of_Concept/Python/src/convert_raw_to_png.py`
+        - Example: `python convert_raw_to_png.py` (defaults to `output_data/optimized_dwell_time.raw`)
 
 ## Task
 1. Setup environment on local machine
