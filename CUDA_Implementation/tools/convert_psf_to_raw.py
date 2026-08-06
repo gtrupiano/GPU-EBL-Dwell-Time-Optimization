@@ -1,8 +1,8 @@
 ###############################################################################
 # File Name: convert_psf_to_raw.py
 # Description:
-# Generates the double-Gaussian PSF mask and writes it as a libwb ".raw"
-# text file that the CUDA implementation imports as the convolution mask.
+# Converts a double-Gaussian PSF mask stored in a NumPy ".npy" file into a
+# libwb ".raw" text file used by the CUDA convolution component.
 ###############################################################################
 
 ###############################################################################
@@ -17,7 +17,6 @@ import numpy as np
 
 # File Imports
 import constants
-from generate_PSF_data import generate_psf_mask
 
 
 ###############################################################################
@@ -27,17 +26,36 @@ from generate_PSF_data import generate_psf_mask
 def main():
     args = parse_arguments()
 
-    # Either reuse a previously generated mask or build one from the parameters.
-    if args.npy is not None:
-        psf_mask = np.load(args.npy)
-    else:
-        psf_mask = generate_psf_mask(args.mask_size, args.pixel_size)
+    # Load the previously generated PSF mask.
+    psf_mask = np.load(args.npy, allow_pickle=False)
+
+    validate_psf_mask(psf_mask, args.mask_size)
 
     # The CUDA convolution kernel does not normalize the mask, so it is
     # normalized here to keep deposited energy on the same 0-to-1 scale as the
     # IC layout (matching the Python proof-of-concept).
     if not args.no_normalize:
-        psf_mask = psf_mask / np.sum(psf_mask)
+        psf_mask = psf_mask / np.sum(psf_mask, dtype=np.float64)
+
+    # CUDA uses single-precision floating-point values.
+    # Ensure all values can be represented by CUDA's single-precision floats.
+    if np.any(psf_mask > np.finfo(np.float32).max):
+        raise ValueError(
+            "PSF mask contains values that cannot be represented as float32."
+        )
+
+    # CUDA uses single-precision floating-point values.
+    psf_mask = psf_mask.astype(np.float32)
+
+    if not np.all(np.isfinite(psf_mask)):
+        raise ValueError(
+            "PSF mask contains invalid values after conversion to float32."
+        )
+
+    if np.sum(psf_mask, dtype=np.float64) <= 0.0:
+        raise ValueError(
+            "PSF mask becomes zero after conversion to float32."
+        )
 
     write_libwb_raw(args.output, psf_mask)
 
@@ -52,9 +70,15 @@ def main():
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Generate a double-Gaussian PSF mask as a libwb .raw file."
+        description="Convert a double-Gaussian PSF mask into a libwb .raw file."
     )
 
+    parser.add_argument(
+        "--npy",
+        type=Path,
+        required=True,
+        help="Path to an existing two-dimensional .npy PSF mask."
+    )
     parser.add_argument(
         "-o", "--output",
         type=Path,
@@ -65,19 +89,7 @@ def parse_arguments():
         "--mask-size",
         type=int,
         default=constants.MASK_SIZE,
-        help=f"PSF mask width/height in pixels (default {constants.MASK_SIZE})."
-    )
-    parser.add_argument(
-        "--pixel-size",
-        type=float,
-        default=constants.PIXEL_SIZE_UM,
-        help="Physical size of one pixel in micrometers."
-    )
-    parser.add_argument(
-        "--npy",
-        type=Path,
-        default=None,
-        help="Load the mask from an existing .npy instead of regenerating it."
+        help=f"Required PSF width/height in pixels (default {constants.MASK_SIZE})."
     )
     parser.add_argument(
         "--no-normalize",
@@ -86,6 +98,12 @@ def parse_arguments():
     )
 
     args = parser.parse_args()
+
+    if args.mask_size <= 0:
+        parser.error("--mask-size must be greater than zero.")
+
+    if not args.npy.is_file():
+        parser.error(f"Input PSF file does not exist: {args.npy}")
 
     # Default output name encodes the mask dimensions for clarity.
     if args.output is None:
@@ -99,6 +117,40 @@ def parse_arguments():
 
 
 ###############################################################################
+# Function Name: validate_psf_mask
+# Description:
+###############################################################################
+
+def validate_psf_mask(psf_mask, mask_size):
+    if psf_mask.ndim != 2:
+        raise ValueError(
+            f"PSF mask must be two-dimensional; received shape {psf_mask.shape}."
+        )
+
+    expected_shape = (mask_size, mask_size)
+
+    if psf_mask.shape != expected_shape:
+        raise ValueError(
+            f"PSF mask must be {mask_size}x{mask_size}; "
+            f"received shape {psf_mask.shape}."
+        )
+
+    if not np.all(np.isfinite(psf_mask)):
+        raise ValueError("PSF mask contains NaN or infinite values.")
+
+    if np.any(psf_mask < 0.0):
+        raise ValueError("PSF mask contains negative values.")
+
+    psf_sum = np.sum(psf_mask, dtype=np.float64)
+
+    if not np.isfinite(psf_sum):
+        raise ValueError("PSF mask sum must be finite.")
+
+    if psf_sum <= 0.0:
+        raise ValueError("PSF mask sum must be greater than zero.")
+
+
+###############################################################################
 # Function Name: write_libwb_raw
 # Description:
 ###############################################################################
@@ -109,7 +161,7 @@ def write_libwb_raw(output_path, matrix):
 
     rows, columns = matrix.shape
 
-    with open(output_path, "w") as file:
+    with open(output_path, "w", encoding="utf-8") as file:
         # First line holds the dimensions, matching libwb's raw format.
         file.write(f"{rows} {columns}\n")
 

@@ -33,6 +33,8 @@ def main():
 
     vmin, vmax = resolve_scale(matrix, args.scale, args.max_dwell)
 
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+
     plt.imsave(args.output, matrix, cmap=args.cmap, vmin=vmin, vmax=vmax)
 
     print(f"Wrote {matrix.shape[0]}x{matrix.shape[1]} image to {args.output}")
@@ -59,7 +61,7 @@ def parse_arguments():
         "-o", "--output",
         type=Path,
         default=None,
-        help="Output .png path. Defaults to the input path with a .png suffix."
+        help="Output .png path. Defaults to CUDA output_data/<input_name>.png."
     )
     parser.add_argument(
         "--cmap",
@@ -69,7 +71,7 @@ def parse_arguments():
     parser.add_argument(
         "--scale",
         choices=("auto", "dwell", "unit"),
-        default="auto",
+        default="dwell",
         help="Intensity scaling: auto (min-max), dwell (0..max-dwell), unit (0..1)."
     )
     parser.add_argument(
@@ -81,9 +83,23 @@ def parse_arguments():
 
     args = parser.parse_args()
 
-    # Default output sits next to the input with a .png suffix.
+    if not args.input.is_file():
+        parser.error(f"Input raw file does not exist: {args.input}")
+
+    if args.max_dwell <= 0.0:
+        parser.error("--max-dwell must be greater than zero.")
+
+    # Defaults output to output_data folder
     if args.output is None:
-        args.output = args.input.with_suffix(".png")
+        constants.CUDA_OUTPUT_DATA_FOLDER_PATH.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        args.output = (
+            constants.CUDA_OUTPUT_DATA_FOLDER_PATH /
+            f"{args.input.stem}.png"
+        )
 
     return args
 
@@ -94,18 +110,36 @@ def parse_arguments():
 ###############################################################################
 
 def read_libwb_raw(input_path):
-    with open(input_path, "r") as file:
+    with open(input_path, "r", encoding="utf-8") as file:
         header = file.readline().split()
 
         # libwb writes "rows columns", or just "rows" for a single column.
         if len(header) == 1:
             rows, columns = int(header[0]), 1
-        else:
+        elif len(header) == 2:
             rows, columns = int(header[0]), int(header[1])
+        else:
+            raise ValueError(
+                "Raw file header must contain one or two integer dimensions."
+            )
+
+        if rows <= 0 or columns <= 0:
+            raise ValueError("Raw file dimensions must be greater than zero.")
 
         values = np.array(file.read().split(), dtype=np.float64)
 
-    return values[: rows * columns].reshape(rows, columns)
+    expected_values = rows * columns
+
+    if values.size != expected_values:
+        raise ValueError(
+            f"Expected {expected_values} values for a {rows}x{columns} matrix, "
+            f"but found {values.size}."
+        )
+
+    if not np.all(np.isfinite(values)):
+        raise ValueError("Raw matrix contains NaN or infinite values.")
+
+    return values.reshape(rows, columns)
 
 
 ###############################################################################

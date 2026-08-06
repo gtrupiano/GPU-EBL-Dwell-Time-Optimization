@@ -101,12 +101,24 @@ def parse_arguments():
 
     # A square --size is shorthand for equal width and height.
     if args.size is not None:
+        if args.size <= 0:
+            parser.error("--size must be greater than zero.")
+
         args.width = args.size
         args.height = args.size
 
     # Width and height only make sense together.
     if (args.width is None) != (args.height is None):
         parser.error("--width and --height must be used together (or use --size).")
+
+    if args.width is not None and (args.width <= 0 or args.height <= 0):
+        parser.error("--width and --height must be greater than zero.")
+
+    if args.threshold < 0 or args.threshold > 255:
+        parser.error("--threshold must be between 0 and 255.")
+
+    if not args.input.is_file():
+        parser.error(f"Input image does not exist: {args.input}")
 
     # Default output mirrors the source name inside the CUDA input_data folder.
     if args.output is None:
@@ -123,11 +135,12 @@ def parse_arguments():
 
 def load_grayscale_image(input_path, width, height, invert, binarize, threshold):
     # Force a single grayscale channel.
-    image = Image.open(input_path).convert("L")
+    with Image.open(input_path) as input_image:
+        image = input_image.convert("L")
 
     # Optional resize to the requested dimensions.
     if width is not None and height is not None:
-        image = image.resize((width, height), Image.LANCZOS)
+        image = image.resize((width, height), Image.Resampling.LANCZOS)
 
     # Optional polarity flip.
     if invert:
