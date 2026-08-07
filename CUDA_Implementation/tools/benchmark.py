@@ -28,6 +28,8 @@ BENCHMARK_RESULTS_DIRECTORY = TOOLS_DIRECTORY / "benchmark_results"
 # Executable Path
 CUDA_EXECUTABLE = CUDA_DIRECTORY / "build" / "GPU_EBL_Dwell_Time_Optimization"
 
+# Script Path
+RAW_TO_PNG_SCRIPT = TOOLS_DIRECTORY / "convert_raw_to_png.py"
 
 # IC Layout Paths
 IC128_PATH = INPUT_DATA_DIRECTORY / "IC128.ppm"
@@ -106,6 +108,21 @@ def capture_dataset_results():
                 str(dwell_output_path),
                 "-t",
                 "image"
+            ],
+            stderr=subprocess.STDOUT,
+            text=True
+        )
+
+        # Convert dwell-time output from .raw to .png for additional data collection (useful for output analysis)
+        dwell_output_png_path = BENCHMARK_RESULTS_DIRECTORY / f"{dataset_name}_dwell.png"
+
+        subprocess.check_output(
+            [
+                "python3",
+                str(RAW_TO_PNG_SCRIPT),
+                str(dwell_output_path),
+                "-o",
+                str(dwell_output_png_path)
             ],
             stderr=subprocess.STDOUT,
             text=True
