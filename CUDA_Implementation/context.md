@@ -50,6 +50,6 @@ Information regarding what the goal of the project is as well as what was done t
         - Passing in the target IC layout and PSF mask input datasets.
         - Example of how to run executable with proper arguments:
             ```
-            ./build/GPU_EBL_Dwell_Time_Optimization -i "./input_data/IC128.ppm,./input_data/PSF_Mask_65x65.raw" -o "output_data/optimized_dwell_time.raw" -t image
+            ./build/GPU_EBL_Dwell_Time_Optimization -i "./input_data/IC128.ppm,./input_data/PSF_Mask_100kV_1um-HSQ.raw" -o "output_data/optimized_dwell_time.raw" -t image
             ```
     5. TODO: Create a test bench to compare CUDA results against the Python proof-of-concept results.

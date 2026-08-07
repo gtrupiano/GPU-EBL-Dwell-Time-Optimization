@@ -8,3 +8,6 @@ build/
 .venv
 __pycache__/
 output_data/
+
+# CUDA Items
+benchmark_results/
