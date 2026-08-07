@@ -29,10 +29,14 @@
 #define TARGET_LAYOUT_ARG_INDEX 0
 #define PSF_MASK_ARG_INDEX 1
 
+// Algorithm Parameters
 const uint MAX_ITERATIONS = 1000;
 const float MINIMUM_MSE = 0.001f;
 const float LEARNING_RATE = 0.1f;
 const float MAX_DWELL_TIME = 2.0f;
+
+// Frequency of MSE Iteration Logging
+const uint MSE_ITERATION_LOG_INTERVAL = 50;
 
 /*
  **********************************************************************
@@ -43,6 +47,7 @@ const float MAX_DWELL_TIME = 2.0f;
 // File Variables
 char *targetLayoutFile;
 char *psfMaskFile;
+char *outputDwellTimeFile;
 
 // Image Variables
 wbImage_t targetLayoutImage;
@@ -183,6 +188,9 @@ static void loadInputs(wbArg_t args)
     targetLayoutFile = wbArg_getInputFile(args, TARGET_LAYOUT_ARG_INDEX);
     psfMaskFile = wbArg_getInputFile(args, PSF_MASK_ARG_INDEX);
 
+    // Obtaining file from output argument
+    outputDwellTimeFile = wbArg_getOutputFile(args);
+
     // Target layout data procurement
 
     // Load target layout image into proper variables.
@@ -320,8 +328,16 @@ static void runOptimization(void)
             cudaCheck(cudaMemcpy(deviceBestDwellTimeMap, deviceDwellTimeMap, sizeOfTargetLayout, cudaMemcpyDeviceToDevice));
         }
 
-        // Logging data for iteration number and MSE value
-        //wbLog(TRACE, "Iteration: ", (iteration + 1), "; MSE = ", mse);
+        // Logging data for iteration number and MSE value at these intervals:
+        // - First iteration (to capture where it started)
+        // - Every MSE_ITERATION_LOG_INTERVAL iteration
+        bool firstIteration = iteration == 0;
+        bool mseIterationInterval = (iteration + 1) % MSE_ITERATION_LOG_INTERVAL == 0;
+
+        if(firstIteration || mseIterationInterval)
+        {
+            wbLog(TRACE, "Iteration: ", (iteration + 1), "; MSE = ", mse);
+        }
 
         // Preemptively stop optimization if the MSE is too low
         if(mse <= MINIMUM_MSE)
@@ -361,7 +377,7 @@ static void copyResultsToHost(void)
 
     // Store the results from host to a file
     wbExport(
-        "output_data/optimized_dwell_time.raw",
+        outputDwellTimeFile,
         hostDwellTimeMap,
         targetLayoutHeight,
         targetLayoutWidth
