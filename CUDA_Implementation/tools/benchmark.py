@@ -10,10 +10,10 @@
 # Library Imports
 import csv
 import json
+from pathlib import Path
 import re
 import subprocess
-from pathlib import Path
-
+import time
 
 ###############################################################################
 # CONSTANTS
@@ -63,6 +63,15 @@ DATASETS = [
     ("IC512_100kV_50nm-HSQ", IC512_PATH, PSF_100KV_50NM_HSQ_PATH),
 ]
 
+# Benchmarking Parameters
+# How many times the same dataset is executed. This is used for the average amount of execution time
+NUMBER_OF_TRIALS = 10
+
+# Algorithm parameters from CUDA code (UPDATE FROM main.cu)
+MAX_ITERATIONS = 1000
+MINIMUM_MSE = 0.001
+LEARNING_RATE = 0.1
+MAX_DWELL_TIME = 2.0
 
 ###############################################################################
 # GLOBAL VARIABLES
@@ -77,42 +86,82 @@ def main():
     # Create benchmark output directory if it doesn't exist already
     BENCHMARK_RESULTS_DIRECTORY.mkdir(exist_ok=True)
 
-    dataset_outputs = capture_dataset_results()
+    dataset_outputs = capture_dataset_output()
 
-    benchmark_results, mse_history = parse_results(dataset_outputs)
+    benchmark_results, mse_history = process_dataset_results(dataset_outputs)
 
     write_results(benchmark_results, mse_history)
 
 
 ###############################################################################
-# Function Name: capture_dataset_results
+# Function Name: capture_dataset_output
 # Description:
 ###############################################################################
 
-def capture_dataset_results():
+def capture_dataset_output():
     dataset_outputs = []
 
     for dataset_name, ic_path, psf_path in DATASETS:
         print("Running dataset:", dataset_name)
-        
+
         # Unique output path name based on inputs
         dwell_output_path = BENCHMARK_RESULTS_DIRECTORY / f"{dataset_name}_dwell.raw"
 
-        # Pass data into input arguments of CUDA executable
-        output = subprocess.check_output(
-            [
-                str(CUDA_EXECUTABLE),
-                "-i",
-                f"{ic_path},{psf_path}",
-                "-o",
-                str(dwell_output_path),
-                "-t",
-                "image"
-            ],
-            stderr=subprocess.STDOUT,
-            text=True
-        )
+        # This will get overwritten each trial but that's okay since the result will be the same.
+        # Only used to hold a trials results
+        trial_results = None 
 
+        # Execute the same dataset multiple times to get average timing measurements
+        total_program_time_sum = 0
+        total_optimization_time_sum = 0
+        for trial in range(NUMBER_OF_TRIALS):
+            print(f"Trial {trial + 1}/{NUMBER_OF_TRIALS}")
+
+            # Capture start time to check how long the whole CUDA program takes to execute
+            start_time = time.perf_counter()
+
+            # Pass data into input arguments of CUDA executable
+            output = subprocess.check_output(
+                [
+                    str(CUDA_EXECUTABLE),
+                    "-i",
+                    f"{ic_path},{psf_path}",
+                    "-o",
+                    str(dwell_output_path),
+                    "-t",
+                    "image"
+                ],
+                stderr=subprocess.STDOUT,
+                text=True
+            )
+
+            # Capture end time
+            end_time = time.perf_counter()
+
+            # Calculate total time to check how long the whole CUDA program takes to execute
+            execution_time = end_time - start_time
+
+            # Add this trials execution time to the sum for later averaging calculations
+            total_program_time_sum += execution_time
+
+            # Fetching all needed data from JSON output
+            trial_results = get_parsed_output(output)
+            optimization_time = trial_results["optimization_time"]
+
+            # Verify optimized time parameter was present in JSON output
+            if optimization_time is None:
+                raise RuntimeError(f"Optimization time not found for {dataset_name}, trial {trial + 1}")
+
+            # Adding this trials optimization time to the sum for later averaging calculations
+            total_optimization_time_sum += optimization_time
+
+        # Calculate the average execution time for this dataset (converts from sec to ms)
+        average_execution_time = total_program_time_sum / NUMBER_OF_TRIALS
+        average_execution_time *= 1000 
+
+        # Calculate the average optimization time for this dataset
+        average_optimization_time = total_optimization_time_sum / NUMBER_OF_TRIALS
+        
         # Convert dwell-time output from .raw to .png for additional data collection (useful for output analysis)
         dwell_output_png_path = BENCHMARK_RESULTS_DIRECTORY / f"{dataset_name}_dwell.png"
 
@@ -134,77 +183,129 @@ def capture_dataset_results():
             "ic_path": ic_path,
             "psf_path": psf_path,
             "dwell_output_path": dwell_output_path,
-            "output": output
+            "dwell_output_png_path": dwell_output_png_path,
+            "average_execution_time": average_execution_time,
+            "average_optimization_time": average_optimization_time,
+            "parsed_output": trial_results
         })
 
     return dataset_outputs
 
 
 ###############################################################################
-# Function Name: parse_results
+# Function Name: get_parsed_output
 # Description:
 ###############################################################################
 
-def parse_results(dataset_results):
+def get_parsed_output(output):
+    optimization_time = None
+    best_mse = None
+    best_iteration = None
+    mse_history = []
+
+    # Parse output from CUDA program
+    for line in output.splitlines():
+        # Load data into JSON object
+        try:
+            log_data = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        # Look for JSON headers
+        data = log_data.get("data", {})
+        message = data.get("message", "")
+
+        # Get optimization execution time
+        if message == "Optimization Algorithm":
+            elapsed_time = data.get("elapsed_time")
+
+            if elapsed_time is not None:
+                # Convert from ns to ms
+                optimization_time = elapsed_time / 1000000.0
+
+         # Get logged MSE values
+        mse_match = re.match(r"Iteration: (\d+); MSE = ([0-9.eE+-]+)", message)
+
+        if mse_match:
+            mse_history.append({
+                "Iteration": int(mse_match.group(1)),
+                "MSE": float(mse_match.group(2))
+            })
+
+        # Get best MSE and iteration
+        best_mse_match = re.match(r"Best MSE: ([0-9.eE+-]+) at Iteration: (\d+)", message)
+
+        if best_mse_match:
+            best_mse = float(best_mse_match.group(1))
+            best_iteration = int(best_mse_match.group(2))
+
+    parsed_output = {
+        "optimization_time": optimization_time,
+        "best_mse": best_mse,
+        "best_iteration": best_iteration,
+        "mse_history": mse_history
+    }
+
+    return parsed_output
+
+
+###############################################################################
+# Function Name: process_dataset_results
+# Description:
+###############################################################################
+
+def process_dataset_results(dataset_results):
     benchmark_results = []
     mse_history = []
 
     for result in dataset_results:
-        # Helpers for datastructure of dataset_results
+        # Fetch results already parsed during execution
+        parsed_results = result["parsed_output"]
+
+        # Helpers for datastructure of dataset_results and it's sub datastructure parsed_results
+        # Main datastructure
         dataset_name = result["dataset_name"]
-        dataset_output = result["output"]
+        ic = result["ic_path"].name
+        psf = result["psf_path"].name
+        average_optimization_time = result["average_optimization_time"]
+        average_execution_time = result["average_execution_time"]
+        dwell_output_path = result["dwell_output_path"].name
 
-        # Initialize variables incase messages don't show up in output
-        optimization_time = None
-        best_mse = None
-        best_iteration = None
+        # Sub datastructure
+        best_mse = parsed_results["best_mse"]
+        best_iteration = parsed_results["best_iteration"]
+        original_mse_history = parsed_results["mse_history"]
 
-        # Parse output from CUDA program
-        for line in dataset_output.splitlines():
-            try:
-                log_data = json.loads(line)
-            except json.JSONDecodeError:
-                continue
+        # Verify needed results were present in JSON output
+        if (best_mse is None) or (best_iteration is None):
+            raise RuntimeError(f"Needed data was not found for {dataset_name}")
 
-            data = log_data.get("data", {})
-            message = data.get("message", "")
+        # Add this dataset's MSE history
+        for mse_result in original_mse_history:
+            mse_history.append({
+                "Dataset": dataset_name,
+                "Iteration": mse_result["Iteration"],
+                "MSE": mse_result["MSE"]
+            })
 
-            # Get optimization execution time
-            if message == "Optimization Algorithm":
-                elapsed_time = data.get("elapsed_time")
-
-                if elapsed_time is not None:
-                    # Convert from ns to ms for readability
-                    optimization_time = elapsed_time / 1000000.0
-
-            # Get logged MSE values
-            mse_match = re.match(r"Iteration: (\d+); MSE = ([0-9.eE+-]+)", message)
-
-            if mse_match:
-                mse_history.append({
-                    "Dataset": dataset_name,
-                    "Iteration": int(mse_match.group(1)),
-                    "MSE": float(mse_match.group(2))
-                })
-
-            # Get best MSE and iteration
-            best_mse_match = re.match(
-                r"Best MSE: ([0-9.eE+-]+) at Iteration: (\d+)",
-                message
-            )
-
-            if best_mse_match:
-                best_mse = float(best_mse_match.group(1))
-                best_iteration = int(best_mse_match.group(2))
-
+        # Append benchmark results
         benchmark_results.append({
             "Dataset": dataset_name,
-            "IC": result["ic_path"].name,
-            "PSF": result["psf_path"].name,
-            "Optimization Time (ms)": optimization_time,
-            "Best MSE": best_mse,
-            "Best Iteration": best_iteration,
-            "Dwell Time Output": result["dwell_output_path"].name
+            "IC": ic,
+            "PSF": psf,
+
+            "Max_Iterations": MAX_ITERATIONS,
+            "Minimum_MSE": MINIMUM_MSE,
+            "Learning_Rate": LEARNING_RATE,
+            "Max_Dwell_Time": MAX_DWELL_TIME,
+
+            "Average_Optimization_Time_(ms)": average_optimization_time,
+            "Average_Program_Time_(ms)": average_execution_time,
+            "Number_of_Trials": NUMBER_OF_TRIALS,
+
+            "Best_MSE": best_mse,
+            "Best_Iteration": best_iteration,
+            "Dwell_Time_Output": dwell_output_path
         })
 
     return benchmark_results, mse_history
@@ -225,10 +326,19 @@ def write_results(benchmark_results, mse_history):
                 "Dataset",
                 "IC",
                 "PSF",
-                "Optimization Time (ms)",
-                "Best MSE",
-                "Best Iteration",
-                "Dwell Time Output"
+
+                "Max_Iterations",
+                "Minimum_MSE",
+                "Learning_Rate",
+                "Max_Dwell_Time",
+
+                "Average_Optimization_Time_(ms)",
+                "Average_Program_Time_(ms)",
+                "Number_of_Trials",
+
+                "Best_MSE",
+                "Best_Iteration",
+                "Dwell_Time_Output"
             ]
         )
 
