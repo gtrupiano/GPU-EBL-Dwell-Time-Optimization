@@ -10,10 +10,12 @@
 ###############################################################################
 
 # Library Imports
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from scipy.signal import fftconvolve
+import time
 
 # File Imports
 import constants
@@ -29,12 +31,15 @@ import constants
 ###############################################################################
 
 def main():
+    # Captures and processes arguments
+    args = parse_arguments()
+
     # Load the IC layout and convert it to binary values: black = 0, white = 1.
-    ic_image = Image.open(constants.IC_IMAGE_PATH).convert("1")
+    ic_image = Image.open(args.ic_path).convert("1")
     ic_layout = np.asarray(ic_image, dtype=np.float64)
 
     # Load the previously generated PSF mask.
-    psf_mask = np.load(constants.PSF_2D_OUTPUT_DATA_PATH)
+    psf_mask = np.load(args.psf_path)
 
     # Keep deposited energy on approximately the same 0-to-1 scale as the IC.
     psf_mask = psf_mask / np.sum(psf_mask)
@@ -44,34 +49,85 @@ def main():
     # Unlike ic_layout, dwell_time_map will become grayscale
     dwell_time_map = ic_layout.copy()
 
-    print(dwell_time_map.min(), dwell_time_map.max())
+    # Capturing start time for optimization duration
+    start_optimization_time = time.perf_counter()
 
     # Iteratively adjust the dwell-time map and record the MSE after each iteration.
-    mse_history = optimize_dwell_time(ic_layout, psf_mask, dwell_time_map)
-
-    # Recalculate the final deposited energy after the final dwell-time update.
-    deposited_energy = fftconvolve(
-        dwell_time_map,
-        psf_mask,
-        mode="same"
-    )
-
-    error_matrix, mse = calculate_error_matrix(
+    mse_history, best_mse, best_iteration, best_dwell_time_map = optimize_dwell_time(
         ic_layout,
-        deposited_energy
-    )
-
-    print(f"Final MSE: {mse:.8f}")
-
-    show_plots(
-        ic_layout,
-        dwell_time_map,
         psf_mask,
-        deposited_energy,
-        error_matrix,
-        mse,
-        mse_history
+        dwell_time_map
     )
+
+    # Capturing end time for optimization duration
+    end_optimization_time = time.perf_counter()
+
+    # Calculating optimization duration (and converting from sec to ms)
+    optimization_time = end_optimization_time - start_optimization_time
+    optimization_time *= 1000
+
+    # Use the best dwell-time map as the final output.
+    dwell_time_map[:, :] = best_dwell_time_map
+
+    # Used for benchmarking
+    print(f"Optimization Time (ms): {optimization_time:.6f}")
+    print(f"Best MSE: {best_mse:.8f} at Iteration: {best_iteration}")
+
+    # Save optimized dwell map
+    image_height, image_width = dwell_time_map.shape
+
+    # Saving dwell time output
+    np.save(
+        args.dwell_output_path,
+        dwell_time_map
+    )
+
+     # Only calculate/display visualization data when requested
+    if args.show_plots:
+        # Recalculate the final deposited energy after the final dwell-time update.
+        deposited_energy = fftconvolve(
+            dwell_time_map,
+            psf_mask,
+            mode="same"
+        )
+
+        error_matrix, mse = calculate_error_matrix(
+            ic_layout,
+            deposited_energy
+        )
+
+        show_plots(
+            ic_layout,
+            dwell_time_map,
+            psf_mask,
+            deposited_energy,
+            error_matrix,
+            mse,
+            mse_history
+        )
+
+
+###############################################################################
+# Function Name: parse_arguments
+# Description:
+###############################################################################
+
+def parse_arguments():
+    # Parser object declaration
+    parser = argparse.ArgumentParser()
+
+    # Required arguments
+    parser.add_argument("ic_path")
+    parser.add_argument("psf_path")
+    parser.add_argument("dwell_output_path")
+
+    # Optional argument for showing plots
+    parser.add_argument(
+        "--show-plots",
+        action="store_true"
+    )
+
+    return parser.parse_args()
 
 
 ###############################################################################
@@ -83,8 +139,11 @@ def calculate_error_matrix(ic_layout, deposited_energy):
     error_matrix = np.zeros_like(deposited_energy)
     error_sum = 0.0
 
-    for row in range(constants.IMAGE_SIZE_PIXELS):
-        for col in range(constants.IMAGE_SIZE_PIXELS):
+    # Fetching real image size
+    image_height, image_width = ic_layout.shape
+
+    for row in range(image_height):
+        for col in range(image_width):
             # Desired exposure minus actual deposited energy.
             error_matrix[row][col] = (ic_layout[row][col] - deposited_energy[row][col])
 
@@ -95,7 +154,7 @@ def calculate_error_matrix(ic_layout, deposited_energy):
             error_sum += error_value_squared
 
     # Calculate the mean squared error.
-    mse = error_sum / (constants.IMAGE_SIZE_PIXELS ** 2)
+    mse = error_sum / (image_height * image_width)
 
     return error_matrix, mse
 
@@ -107,9 +166,11 @@ def calculate_error_matrix(ic_layout, deposited_energy):
 
 def optimize_dwell_time(ic_layout, psf_mask, dwell_time_map):
     mse_history = []
-    best_mse = float('inf') # Python trick to do infinitly large number
+    best_mse = float("inf") # Python trick to do infinitly large number
+    best_iteration = 0
     best_dwell_time_map = None
 
+    image_height, image_width = dwell_time_map.shape
 
     for iteration in range(constants.MAX_ITERATIONS):
         # Simulate the deposited energy produced by the current dwell-time map (this is what's changing)
@@ -131,17 +192,18 @@ def optimize_dwell_time(ic_layout, psf_mask, dwell_time_map):
         # Keeping track of the best mse map
         if mse < best_mse:
             best_mse = mse
+            best_iteration = iteration + 1
             best_dwell_time_map = dwell_time_map.copy()
 
-        print(
-            f"Iteration {iteration + 1:3d}: "
-            f"MSE = {mse:.8f}"
-        )
+        # Only logging MSE at specified interval
+        if (iteration == 0) or ((iteration + 1) % constants.MSE_ITERATION_LOG_INTERVAL == 0):
+            print(
+                f"Iteration: {iteration + 1}; "
+                f"MSE = {mse:.8f}"
+            )
 
         # Stop early when the MSE becomes sufficiently small.
         if(mse <= constants.MINIMUM_MSE):
-            break
-        elif iteration > 0 and (abs(mse_history[iteration -1] - mse) < constants.MINIMUM_MSE_CHANGE):
             break
         
         # Convolve the error with the PSF to determine which dwell-time pixels
@@ -164,8 +226,8 @@ def optimize_dwell_time(ic_layout, psf_mask, dwell_time_map):
         #   Decrease dwell time.
 
         # Update each dwell-time pixel using its corresponding error value.
-        for row in range(constants.IMAGE_SIZE_PIXELS):
-            for col in range(constants.IMAGE_SIZE_PIXELS):
+        for row in range(image_height):
+            for col in range(image_width):
                 dwell_time_map[row][col] += (constants.LEARNING_RATE * dwell_time_correction[row][col])
 
                 # Keep the dwell time within its allowed range.
@@ -176,21 +238,21 @@ def optimize_dwell_time(ic_layout, psf_mask, dwell_time_map):
                     dwell_time_map[row][col] = constants.MAX_DWELL_TIME
 
     # Update the dwell map with the best dwell time map to display
-    dwell_time_map[:, :] = best_dwell_time_map
+    #dwell_time_map[:, :] = best_dwell_time_map
     
-    print("Min:", dwell_time_map.min())
-    print("Max:", dwell_time_map.max())
-    print("Middle values:", np.sum(
-        (dwell_time_map > 0.0) &
-        (dwell_time_map < constants.MAX_DWELL_TIME)
-    ))
+    # print("Min:", dwell_time_map.min())
+    # print("Max:", dwell_time_map.max())
+    # print("Middle values:", np.sum(
+    #     (dwell_time_map > 0.0) &
+    #     (dwell_time_map < constants.MAX_DWELL_TIME)
+    # ))
 
-    print("Zero values:", np.sum(dwell_time_map == 0.0))
-    print("Maximum values:", np.sum(
-        dwell_time_map == constants.MAX_DWELL_TIME
-    ))
+    # print("Zero values:", np.sum(dwell_time_map == 0.0))
+    # print("Maximum values:", np.sum(
+    #     dwell_time_map == constants.MAX_DWELL_TIME
+    # ))
 
-    return mse_history
+    return mse_history, best_mse, best_iteration, best_dwell_time_map
 
 
 ###############################################################################
