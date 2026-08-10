@@ -56,11 +56,11 @@ python simulated_exposure.py ../input_data/IC128.png ../input_data/PSF_Mask_100k
 In order to change the algorithm output from .npy to .png, the `convert_psf_to_png.py` script needs to be used. To launch it, execute the following:
 
 ```bash
-python convert_psf_to_png.py <DWELL_OUTPUT.npy> -o <DWELL_OUTPUT.png>
+python convert_npy_to_png.py <DWELL_OUTPUT.npy> -o <DWELL_OUTPUT.png>
 ```
 
 ```bash
-python convert_psf_to_png.py ../output_data/IC128_100kV_1um-HSQ.npy -o IC128_100kV_1um-HSQ.png
+python convert_npy_to_png.py ../output_data/IC128_100kV_1um-HSQ.npy -o IC128_100kV_1um-HSQ.png
 ```
 
 

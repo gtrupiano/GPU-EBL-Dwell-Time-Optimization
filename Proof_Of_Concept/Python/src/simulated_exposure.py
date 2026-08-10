@@ -71,10 +71,7 @@ def main():
 
     # Used for benchmarking
     print(f"Optimization Time (ms): {optimization_time:.6f}")
-    print(f"Best MSE: {best_mse:.8f} at Iteration: {best_iteration}")
-
-    # Save optimized dwell map
-    image_height, image_width = dwell_time_map.shape
+    print(f"Best MSE: {best_mse:.12e} at Iteration: {best_iteration}")
 
     # Saving dwell time output
     np.save(
@@ -199,7 +196,7 @@ def optimize_dwell_time(ic_layout, psf_mask, dwell_time_map):
         if (iteration == 0) or ((iteration + 1) % constants.MSE_ITERATION_LOG_INTERVAL == 0):
             print(
                 f"Iteration: {iteration + 1}; "
-                f"MSE = {mse:.8f}"
+                f"MSE = {mse:.12e}"
             )
 
         # Stop early when the MSE becomes sufficiently small.
@@ -236,21 +233,6 @@ def optimize_dwell_time(ic_layout, psf_mask, dwell_time_map):
 
                 elif dwell_time_map[row][col] > constants.MAX_DWELL_TIME:
                     dwell_time_map[row][col] = constants.MAX_DWELL_TIME
-
-    # Update the dwell map with the best dwell time map to display
-    #dwell_time_map[:, :] = best_dwell_time_map
-    
-    # print("Min:", dwell_time_map.min())
-    # print("Max:", dwell_time_map.max())
-    # print("Middle values:", np.sum(
-    #     (dwell_time_map > 0.0) &
-    #     (dwell_time_map < constants.MAX_DWELL_TIME)
-    # ))
-
-    # print("Zero values:", np.sum(dwell_time_map == 0.0))
-    # print("Maximum values:", np.sum(
-    #     dwell_time_map == constants.MAX_DWELL_TIME
-    # ))
 
     return mse_history, best_mse, best_iteration, best_dwell_time_map
 
