@@ -63,14 +63,15 @@ DEPOSITED_ENERGY_OUTPUT_DATA_PATH = DATA_OUTPUT_FOLDER_PATH / "deposited_energy.
 DEPOSITED_ENERGY_OUTPUT_IMAGE_PATH = DATA_OUTPUT_FOLDER_PATH / "deposited_energy.png"
 
 
-# Dwell Time Iteration Variables
+# Dwell Time Iteration Variables (NEED TO MATCH CUDA IMPLEMENTATION)
 MAX_ITERATIONS = 1000
 
 # Controls how much the dwell time changes during each iteration.
 LEARNING_RATE = 0.1
 
 # Maximum relative dwell-time value.
-MAX_DWELL_TIME = 3.0
+MAX_DWELL_TIME = 2.0
 
-MINIMUM_MSE = 0.000001
-MINIMUM_MSE_CHANGE = 0.00000001
+MINIMUM_MSE = 0.001
+
+MSE_ITERATION_LOG_INTERVAL = 50
