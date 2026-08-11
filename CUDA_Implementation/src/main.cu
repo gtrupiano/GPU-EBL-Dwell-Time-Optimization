@@ -1,7 +1,8 @@
 /*
 **********************************************************************
 	File Name: main.cu
-	Description:
+	Description: Manages program input, GPU memory, iterative dwell
+    time optimization algorithm, result transfer, and output.
 **********************************************************************
 */
 
@@ -55,32 +56,34 @@ wbImage_t targetLayoutImage;
 uint targetLayoutWidth;
 uint targetLayoutHeight;
 uint targetLayoutChannels;
-uint sizeOfTargetLayout;
+uint targetLayoutSizeBytes;
 
 // These need to be int due to wbImport data type inputs
 int psfMaskRows;
 int psfMaskColumns;
-uint sizeOfPsfMask;
+uint psfMaskSizeBytes;
 
 
-// Input
+// Host Input Data
 float *hostTargetLayout;
 float *hostPsfMask;
 
+// Device Input Data
 float *deviceTargetLayout;
 float *devicePsfMask;
 
-// Intermediate Pointers
+// Device Intermediate Data
 float *deviceDepositedEnergy;
 float *deviceErrorMatrix;
 float *deviceSquaredErrorSum; // A single value, not a matrix
 float *deviceDwellTimeCorrection;
 float *deviceBestDwellTimeMap;
 
-// Output
-float *hostDwellTimeMap;
-
+// Device Output Data
 float *deviceDwellTimeMap;
+
+// Host Output Data
+float *hostDwellTimeMap;
 
 /*
  **********************************************************************
@@ -100,14 +103,18 @@ float *deviceDwellTimeMap;
  **********************************************************************
 */
 
-static void cudaCheck(cudaError_t error);
+// Main Program Functions
 static void loadInputs(wbArg_t args);
 static bool verifyInputs(void);
 static void allocateMemory(void);
 static void copyDataToDevice(void);
 static void runOptimization(void);
 static void copyResultsToHost(void);
+static void exportOutput(void);
 static void freeMemory(void);
+
+// Utility Function
+static void cudaCheck(cudaError_t error);
 
 /*
  **********************************************************************
@@ -118,7 +125,9 @@ static void freeMemory(void);
 
 /**************************************************
  * Function: main
- * Description: 
+ * Description: Handles program initialization, CUDA
+ * component execution, result retrieval, output,
+ * and cleanup.
 **************************************************/
 
 int main(int argc, char **argv) 
@@ -161,6 +170,12 @@ int main(int argc, char **argv)
     wbTime_stop(Copy,"Copying Data From GPU");
 
 
+    wbTime_start(Copy, "Exporting Data To File ");
+    // Saving output data to file
+    exportOutput();
+    wbTime_stop(Copy, "Exporting Data To File ");
+    
+
     wbTime_start(GPU, "GPU Memory Deallocation");
     // Deallocate memory
     freeMemory();
@@ -179,7 +194,9 @@ int main(int argc, char **argv)
 
 /**************************************************
  * Function: loadInputs
- * Description: 
+ * Description: Loads the target layout and PSF mask
+ * from the input argument files and stores their
+ * dimensions.
 **************************************************/
 
 static void loadInputs(wbArg_t args)
@@ -202,7 +219,7 @@ static void loadInputs(wbArg_t args)
     targetLayoutChannels = wbImage_getChannels(targetLayoutImage);
 
     // Calculating size of image
-    sizeOfTargetLayout = targetLayoutWidth * targetLayoutHeight * sizeof(float);
+    targetLayoutSizeBytes = targetLayoutWidth * targetLayoutHeight * sizeof(float);
 
     // Reading image and porting data to proper variables
     hostTargetLayout  = wbImage_getData(targetLayoutImage);
@@ -214,13 +231,15 @@ static void loadInputs(wbArg_t args)
     hostPsfMask = (float *)wbImport(psfMaskFile, &psfMaskRows, &psfMaskColumns);
 
     // Calculating size of matrix
-    sizeOfPsfMask = psfMaskRows * psfMaskColumns * sizeof(float);
+    psfMaskSizeBytes = psfMaskRows * psfMaskColumns * sizeof(float);
 }
 
 
 /**************************************************
  * Function: verifyInputs
- * Description: 
+ * Description: Verifies that the loaded target 
+ * layout and PSF mask meet the required input
+ * dimensions and format.
 **************************************************/
 
 static bool verifyInputs(void)
@@ -251,44 +270,49 @@ static bool verifyInputs(void)
 
 /**************************************************
  * Function: allocateMemory
- * Description: 
+ * Description: Allocates GPU memory required for
+ * all needed device variables.
 **************************************************/
 
 static void allocateMemory(void)
 {
     // Input Pointers
-    cudaCheck(cudaMalloc((void **)&deviceTargetLayout, sizeOfTargetLayout));
-    cudaCheck(cudaMalloc((void **)&devicePsfMask, sizeOfPsfMask));
+    cudaCheck(cudaMalloc((void **)&deviceTargetLayout, targetLayoutSizeBytes));
+    cudaCheck(cudaMalloc((void **)&devicePsfMask, psfMaskSizeBytes));
     
     // Intermediate Pointers
-    cudaCheck(cudaMalloc((void **)&deviceDepositedEnergy, sizeOfTargetLayout));
-    cudaCheck(cudaMalloc((void **)&deviceErrorMatrix, sizeOfTargetLayout));
+    cudaCheck(cudaMalloc((void **)&deviceDepositedEnergy, targetLayoutSizeBytes));
+    cudaCheck(cudaMalloc((void **)&deviceErrorMatrix, targetLayoutSizeBytes));
     cudaCheck(cudaMalloc((void **)&deviceSquaredErrorSum, sizeof(float)));
-    cudaCheck(cudaMalloc((void **)&deviceDwellTimeCorrection, sizeOfTargetLayout));
-    cudaCheck(cudaMalloc((void **)&deviceBestDwellTimeMap, sizeOfTargetLayout));
+    cudaCheck(cudaMalloc((void **)&deviceDwellTimeCorrection, targetLayoutSizeBytes));
+    cudaCheck(cudaMalloc((void **)&deviceBestDwellTimeMap, targetLayoutSizeBytes));
 
     // Output Pointers
-    cudaCheck(cudaMalloc((void **)&deviceDwellTimeMap, sizeOfTargetLayout));
+    cudaCheck(cudaMalloc((void **)&deviceDwellTimeMap, targetLayoutSizeBytes));
 }
 
 
 /**************************************************
  * Function: copyDataToDevice
- * Description: 
+ * Description: Copies the input data to GPU memory
+ * and initializes the dwell time map from the
+ * target layout.
 **************************************************/
 static void copyDataToDevice(void)
 {
-    cudaCheck(cudaMemcpy(deviceTargetLayout, hostTargetLayout, sizeOfTargetLayout, cudaMemcpyHostToDevice));
-    cudaCheck(cudaMemcpy(devicePsfMask, hostPsfMask, sizeOfPsfMask, cudaMemcpyHostToDevice));
+    cudaCheck(cudaMemcpy(deviceTargetLayout, hostTargetLayout, targetLayoutSizeBytes, cudaMemcpyHostToDevice));
+    cudaCheck(cudaMemcpy(devicePsfMask, hostPsfMask, psfMaskSizeBytes, cudaMemcpyHostToDevice));
 
-    // Initialize dwell-time map using the target layout
-    cudaCheck(cudaMemcpy(deviceDwellTimeMap, deviceTargetLayout, sizeOfTargetLayout, cudaMemcpyDeviceToDevice));
+    // Initialize dwell time map using the target layout
+    cudaCheck(cudaMemcpy(deviceDwellTimeMap, deviceTargetLayout, targetLayoutSizeBytes, cudaMemcpyDeviceToDevice));
 }
 
 
 /**************************************************
  * Function: runOptimization
- * Description: 
+ * Description: Iteratively calculates deposited
+ * energy and error, updates dwell times, and tracks
+ * the lowest-MSE result.
 **************************************************/
 
 static void runOptimization(void)
@@ -299,12 +323,12 @@ static void runOptimization(void)
 
     for(uint iteration = 0; iteration < MAX_ITERATIONS; iteration++)
     {
-        // Deposited energy calculation
+        // Deposited energy calculation using current dwell time map
         convolveImage(
             deviceDwellTimeMap,
+            devicePsfMask,
             targetLayoutWidth,
             targetLayoutHeight,
-            devicePsfMask,
             deviceDepositedEnergy
         );
 
@@ -314,8 +338,8 @@ static void runOptimization(void)
             deviceDepositedEnergy,
             targetLayoutWidth,
             targetLayoutHeight,
-            deviceErrorMatrix,
-            deviceSquaredErrorSum
+            deviceSquaredErrorSum,
+            deviceErrorMatrix
         );
 
         // Determine whether current MSE is lowest
@@ -325,7 +349,7 @@ static void runOptimization(void)
             bestMSE = mse;
             bestIteration = iteration;
 
-            cudaCheck(cudaMemcpy(deviceBestDwellTimeMap, deviceDwellTimeMap, sizeOfTargetLayout, cudaMemcpyDeviceToDevice));
+            cudaCheck(cudaMemcpy(deviceBestDwellTimeMap, deviceDwellTimeMap, targetLayoutSizeBytes, cudaMemcpyDeviceToDevice));
         }
 
         // Logging data for iteration number and MSE value at these intervals:
@@ -345,16 +369,16 @@ static void runOptimization(void)
             break;
         }
 
-        // Calculate the dwell time
+        // Update the dwell time map using the current error
         updateDwellTime(
-            deviceDwellTimeMap,
             deviceErrorMatrix,
             devicePsfMask,
-            deviceDwellTimeCorrection,
             targetLayoutWidth,
             targetLayoutHeight,
             LEARNING_RATE,
-            MAX_DWELL_TIME
+            MAX_DWELL_TIME,
+            deviceDwellTimeCorrection,
+            deviceDwellTimeMap
         );
     }
 
@@ -365,16 +389,27 @@ static void runOptimization(void)
 
 /**************************************************
  * Function: copyResultsToHost
- * Description: 
+ * Description: Allocates host memory and copies the
+ * best dwell time map from GPU memory to host memory.
 **************************************************/
 
 static void copyResultsToHost(void)
 {
-    hostDwellTimeMap = (float *)malloc(sizeOfTargetLayout);
+    hostDwellTimeMap = (float *)malloc(targetLayoutSizeBytes);
 
     // Copy from device to host
-    cudaCheck(cudaMemcpy(hostDwellTimeMap, deviceBestDwellTimeMap, sizeOfTargetLayout, cudaMemcpyDeviceToHost));
+    cudaCheck(cudaMemcpy(hostDwellTimeMap, deviceBestDwellTimeMap, targetLayoutSizeBytes, cudaMemcpyDeviceToHost));
+}
 
+
+/**************************************************
+ * Function: exportOutput
+ * Description: Exports the optimized dwell time map
+ * from host memory to the specified output file.
+**************************************************/
+
+static void exportOutput(void)
+{
     // Store the results from host to a file
     wbExport(
         outputDwellTimeFile,
@@ -387,7 +422,8 @@ static void copyResultsToHost(void)
 
 /**************************************************
  * Function: freeMemory
- * Description: 
+ * Description: Deallocates GPU and host memory as
+ * well as deletes the imported target-layout image.
 **************************************************/
 
 static void freeMemory(void)
@@ -417,8 +453,8 @@ static void freeMemory(void)
 
 /**************************************************
  * Function: cudaCheck
- * Description: Helper function for verifying CUDA
- * API's executed properly
+ * Description: Checks output of CUDA runtime API
+ * and exits the program if an error occurred.
 **************************************************/
 
 static void cudaCheck(cudaError_t error)

@@ -1,8 +1,9 @@
 /*
- ******************************************************************************
+******************************************************************************
    File Name  : error_calculations.cuh
-   Description:
- ******************************************************************************
+   Description: Declares the API and constants used to calculate the exposure
+    error matrix and mean squared error.
+******************************************************************************
 */
   
 #ifndef ERROR_CALCULATIONS_CUH
@@ -39,12 +40,17 @@ const uint ERROR_BLOCK_SIZE = ERROR_BLOCK_WIDTH * ERROR_BLOCK_HEIGHT;
 */
 
 float calculateError(
+	// Inputs
 	const float *deviceTargetLayout,
 	const float *deviceDepositedEnergy,
 	uint imageWidth,
 	uint imageHeight,
-	float *deviceErrorMatrix,
-	float *deviceSquaredErrorSum
+
+	// Intermediate
+	float *deviceSquaredErrorSum,
+
+	// Output
+	float *deviceErrorMatrix
 );
 
 #endif // ERROR_CALCULATIONS_CUH

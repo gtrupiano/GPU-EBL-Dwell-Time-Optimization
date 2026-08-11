@@ -1,7 +1,8 @@
 /*
  ******************************************************************************
     File Name  : dwell_time_update.cuh
-    Description:
+    Description: Declares the API and constants used to calculate and apply
+    dwell-time corrections to the dwell-time map.
  ******************************************************************************
 */
   
@@ -22,8 +23,8 @@
  ******************************************************************************
 */
 
-#define DWELL_BLOCK_WIDTH 16
-#define DWELL_BLOCK_HEIGHT 16
+const uint DWELL_BLOCK_WIDTH = 16;
+const uint DWELL_BLOCK_HEIGHT = 16;
 
 /*
  ******************************************************************************
@@ -38,14 +39,19 @@
 */
 
 void updateDwellTime(
-    float *deviceDwellTimeMap,
+    // Inputs
     const float *deviceErrorMatrix,
     const float *devicePsfMask,
-    float *deviceDwellTimeCorrection,
     uint imageWidth,
     uint imageHeight,
     float learningRate,
-    float maxDwellTime
+    float maxDwellTime,
+
+    // Intermediate
+    float *deviceDwellTimeCorrection,
+
+    // Input / Output
+    float *deviceDwellTimeMap
 );
 
 #endif // DWELL_TIME_UPDATE_CUH

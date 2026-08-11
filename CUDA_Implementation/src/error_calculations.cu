@@ -1,7 +1,8 @@
 /*
 **********************************************************************
 	File Name: error_calculations.cu
-	Description:
+	Description: Implements CUDA error matrix calculation and mean
+    squared error calculation for evaluating the current deposited energy.
 **********************************************************************
 */
 
@@ -47,29 +48,36 @@
 
 // Functions
 static void calculateErrorMatrix(
+    // Inputs
     const float *deviceTargetLayout,
     const float *deviceDepositedEnergy,
     uint imageWidth,
     uint imageHeight,
+
+    // Outputs
     float *deviceErrorMatrix,
     float *deviceSquaredErrorSum
 );
 
 static float calculateMSE(
-   const float *deviceSquaredErrorSum,
-   uint imageWidth,
-   uint imageHeight
+    // Inputs
+    const float *deviceSquaredErrorSum,
+    uint imageWidth,
+    uint imageHeight
 );
 
 
 // Kernels
 static __global__ void errorMatrixCalculationKernel(
-   const float *icLayout,
-   const float *depositedEnergy,
-   uint imageWidth,
-   uint imageHeight,
-   float *errorMatrix,
-   float *squaredErrorSum
+    // Inputs
+    const float *targetLayout,
+    const float *depositedEnergy,
+    uint imageWidth,
+    uint imageHeight,
+
+    // Outputs
+    float *errorMatrix,
+    float *squaredErrorSum
 );
 
 /*
@@ -80,16 +88,23 @@ static __global__ void errorMatrixCalculationKernel(
 
 /**************************************************
  * Function: calculateError
- * Description: 
+ * Description: Calculates the error matrix and
+ * mean squared error between the target layout 
+ * and deposited energy.
 **************************************************/
 
 float calculateError(
+	// Inputs
 	const float *deviceTargetLayout,
 	const float *deviceDepositedEnergy,
 	uint imageWidth,
 	uint imageHeight,
-	float *deviceErrorMatrix,
-	float *deviceSquaredErrorSum
+
+	// Intermediate
+	float *deviceSquaredErrorSum,
+
+	// Output
+	float *deviceErrorMatrix
 )
 {
 	calculateErrorMatrix(
@@ -113,21 +128,26 @@ float calculateError(
 
 /*
  **********************************************************************
- * LOCAL FUNCTIONS
+ * LOCAL FUNCTIONS / KERNELS
  **********************************************************************
 */
 
 /**************************************************
  * Function: calculateErrorMatrix
- * Description: 
+ * Description: Configures and launches the CUDA
+ * kernel used to calculate the error matrix and
+ * squared error sum.
 **************************************************/
 
 static void calculateErrorMatrix(
+    // Inputs
 	const float *deviceTargetLayout,
 	const float *deviceDepositedEnergy,
 	uint imageWidth,
 	uint imageHeight,
-	float *deviceErrorMatrix,
+	
+    // Outputs
+    float *deviceErrorMatrix,
 	float *deviceSquaredErrorSum
 )
 {
@@ -159,10 +179,12 @@ static void calculateErrorMatrix(
 
 /**************************************************
  * Function: calculateMSE
- * Description: 
+ * Description: Copies the squared error sum to the
+ * host and calculates the mean squared error.
 **************************************************/
 
 static float calculateMSE(
+    // Inputs
     const float *deviceSquaredErrorSum,
     uint imageWidth,
     uint imageHeight
@@ -193,16 +215,22 @@ static float calculateMSE(
 
 /**************************************************
  * Kernel: errorMatrixCalculationKernel
- * Description: 
+ * Description: Calculates each pixel's exposure error
+ * and uses block level reduction to calculate a squared
+ * error sum for each block. Then accumulates the blocks
+ * sums into a total squared error sum.
 **************************************************/
 
 static __global__ void errorMatrixCalculationKernel(
-   const float *targetLayout,
-   const float *depositedEnergy,
-   uint imageWidth,
-   uint imageHeight,
-   float *errorMatrix,
-   float *squaredErrorSum
+    // Inputs
+    const float *targetLayout,
+    const float *depositedEnergy,
+    uint imageWidth,
+    uint imageHeight,
+
+    // Outputs
+    float *errorMatrix,
+    float *squaredErrorSum
 )
 {
 	// Each thread stores its squared error in shared memory but done in 1D for easy reduction

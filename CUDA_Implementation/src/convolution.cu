@@ -1,7 +1,8 @@
 /*
 **********************************************************************
    File Name: convolution.cu
-   Description:
+   Description: Implements tiled CUDA convolution using shared memory 
+   to convolve an input image with a PSF mask.
 **********************************************************************
 */
 
@@ -45,11 +46,14 @@
 */
 
 static __global__ void convolutionKernel(
-   const float *inputImage,
-   uint imageWidth,
-   uint imageHeight,
-   const float *mask,
-   float *outputImage
+    // Inputs
+    const float *inputImage,
+    const float *mask,
+    uint imageWidth,
+    uint imageHeight,
+
+    // Output
+    float *outputImage
 );
 
 /*
@@ -59,15 +63,19 @@ static __global__ void convolutionKernel(
 */
 
 /**************************************************
-* Kernel: convolveImage
-* Description:
+* Function: convolveImage
+* Description: Configures the CUDA grid and block
+* dimensions and launches the convolution kernel.
 **************************************************/
 
 void convolveImage(
+    // Inputs
     const float *deviceInputImage,
+    const float *devicePsfMask,
     uint imageWidth,
     uint imageHeight,
-    const float *devicePsfMask,
+
+    // Output
     float *deviceOutputImage
 )
 {
@@ -83,33 +91,37 @@ void convolveImage(
     dim3 numberOfBlocks(blocksPerDimX, blocksPerDimY, 1);
 
     convolutionKernel<<<numberOfBlocks, blockSize>>>(
-      deviceInputImage,
-      imageWidth,
-      imageHeight,
-      devicePsfMask,
-      deviceOutputImage
-   );
+        deviceInputImage,
+        devicePsfMask,
+        imageWidth,
+        imageHeight,
+        deviceOutputImage
+    );
 }
 
 
 /*
  **********************************************************************
- * LOCAL FUNCTIONS
+ * LOCAL FUNCTIONS / KERNELS
  **********************************************************************
 */
 
 
 /**************************************************
 * Kernel: convolutionKernel
-* Description:
+* Description: Performs tiled 2D convolution of an
+* input image with the PSF mask using shared memory.
 **************************************************/
 
 static __global__ void convolutionKernel(
-   const float *inputImage,
-   uint imageWidth,
-   uint imageHeight,
-   const float *mask,
-   float *outputImage
+    // Inputs
+    const float *inputImage,
+    const float *mask,
+    uint imageWidth,
+    uint imageHeight,
+
+    // Output
+    float *outputImage
 )
 {
     // In order to compute convolution, additional values are needed in a given tile
