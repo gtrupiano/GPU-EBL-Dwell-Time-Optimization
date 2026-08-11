@@ -109,6 +109,9 @@ static void copyDataToDevice(void);
 static void runOptimization(void);
 static void copyResultsToHost(void);
 static void freeMemory(void);
+static void exportOutput(void);
+
+// Utility Function
 static void cudaCheck(cudaError_t error);
 
 /*
@@ -162,6 +165,12 @@ int main(int argc, char **argv)
     copyResultsToHost();
     wbTime_stop(Copy,"Copying Data From GPU");
 
+
+    wbTime_start(Copy, "Exporting Data To File ");
+    // Saving output data to file
+    exportOutput();
+    wbTime_stop(Copy, "Exporting Data To File ");
+    
 
     wbTime_start(GPU, "GPU Memory Deallocation");
     // Deallocate memory
@@ -376,14 +385,6 @@ static void copyResultsToHost(void)
 
     // Copy from device to host
     cudaCheck(cudaMemcpy(hostDwellTimeMap, deviceBestDwellTimeMap, targetLayoutSizeBytes, cudaMemcpyDeviceToHost));
-
-    // Store the results from host to a file
-    wbExport(
-        outputDwellTimeFile,
-        hostDwellTimeMap,
-        targetLayoutHeight,
-        targetLayoutWidth
-    );
 }
 
 
@@ -414,6 +415,24 @@ static void freeMemory(void)
     // Free host side variables
     free(hostPsfMask);
     free(hostDwellTimeMap);
+}
+
+
+/**************************************************
+ * Function: exportOutput
+ * Description: Exports the optimized dwell time map
+ * from host memory to the specified output file.
+**************************************************/
+
+static void exportOutput(void)
+{
+    // Store the results from host to a file
+    wbExport(
+        outputDwellTimeFile,
+        hostDwellTimeMap,
+        targetLayoutHeight,
+        targetLayoutWidth
+    );
 }
 
 
