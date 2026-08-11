@@ -103,14 +103,15 @@ float *hostDwellTimeMap;
  **********************************************************************
 */
 
+// Main Program Functions
 static void loadInputs(wbArg_t args);
 static bool verifyInputs(void);
 static void allocateMemory(void);
 static void copyDataToDevice(void);
 static void runOptimization(void);
 static void copyResultsToHost(void);
-static void freeMemory(void);
 static void exportOutput(void);
+static void freeMemory(void);
 
 // Utility Function
 static void cudaCheck(cudaError_t error);
