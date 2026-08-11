@@ -1,0 +1,2 @@
+# Auxiliary Python tools are not part of the primary implementation
+CUDA_Implementation/tools/** -linguist-detectable
