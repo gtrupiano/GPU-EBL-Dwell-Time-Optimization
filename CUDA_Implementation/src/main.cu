@@ -55,32 +55,34 @@ wbImage_t targetLayoutImage;
 uint targetLayoutWidth;
 uint targetLayoutHeight;
 uint targetLayoutChannels;
-uint sizeOfTargetLayout;
+uint targetLayoutSizeBytes;
 
 // These need to be int due to wbImport data type inputs
 int psfMaskRows;
 int psfMaskColumns;
-uint sizeOfPsfMask;
+uint psfMaskSizeBytes;
 
 
-// Input
+// Host Input Data
 float *hostTargetLayout;
 float *hostPsfMask;
 
+// Device Input Data
 float *deviceTargetLayout;
 float *devicePsfMask;
 
-// Intermediate Pointers
+// Device Intermediate Data
 float *deviceDepositedEnergy;
 float *deviceErrorMatrix;
 float *deviceSquaredErrorSum; // A single value, not a matrix
 float *deviceDwellTimeCorrection;
 float *deviceBestDwellTimeMap;
 
-// Output
-float *hostDwellTimeMap;
-
+// Device Output Data
 float *deviceDwellTimeMap;
+
+// Host Output Data
+float *hostDwellTimeMap;
 
 /*
  **********************************************************************
@@ -100,7 +102,6 @@ float *deviceDwellTimeMap;
  **********************************************************************
 */
 
-static void cudaCheck(cudaError_t error);
 static void loadInputs(wbArg_t args);
 static bool verifyInputs(void);
 static void allocateMemory(void);
@@ -108,6 +109,7 @@ static void copyDataToDevice(void);
 static void runOptimization(void);
 static void copyResultsToHost(void);
 static void freeMemory(void);
+static void cudaCheck(cudaError_t error);
 
 /*
  **********************************************************************
@@ -202,7 +204,7 @@ static void loadInputs(wbArg_t args)
     targetLayoutChannels = wbImage_getChannels(targetLayoutImage);
 
     // Calculating size of image
-    sizeOfTargetLayout = targetLayoutWidth * targetLayoutHeight * sizeof(float);
+    targetLayoutSizeBytes = targetLayoutWidth * targetLayoutHeight * sizeof(float);
 
     // Reading image and porting data to proper variables
     hostTargetLayout  = wbImage_getData(targetLayoutImage);
@@ -214,7 +216,7 @@ static void loadInputs(wbArg_t args)
     hostPsfMask = (float *)wbImport(psfMaskFile, &psfMaskRows, &psfMaskColumns);
 
     // Calculating size of matrix
-    sizeOfPsfMask = psfMaskRows * psfMaskColumns * sizeof(float);
+    psfMaskSizeBytes = psfMaskRows * psfMaskColumns * sizeof(float);
 }
 
 
@@ -257,18 +259,18 @@ static bool verifyInputs(void)
 static void allocateMemory(void)
 {
     // Input Pointers
-    cudaCheck(cudaMalloc((void **)&deviceTargetLayout, sizeOfTargetLayout));
-    cudaCheck(cudaMalloc((void **)&devicePsfMask, sizeOfPsfMask));
+    cudaCheck(cudaMalloc((void **)&deviceTargetLayout, targetLayoutSizeBytes));
+    cudaCheck(cudaMalloc((void **)&devicePsfMask, psfMaskSizeBytes));
     
     // Intermediate Pointers
-    cudaCheck(cudaMalloc((void **)&deviceDepositedEnergy, sizeOfTargetLayout));
-    cudaCheck(cudaMalloc((void **)&deviceErrorMatrix, sizeOfTargetLayout));
+    cudaCheck(cudaMalloc((void **)&deviceDepositedEnergy, targetLayoutSizeBytes));
+    cudaCheck(cudaMalloc((void **)&deviceErrorMatrix, targetLayoutSizeBytes));
     cudaCheck(cudaMalloc((void **)&deviceSquaredErrorSum, sizeof(float)));
-    cudaCheck(cudaMalloc((void **)&deviceDwellTimeCorrection, sizeOfTargetLayout));
-    cudaCheck(cudaMalloc((void **)&deviceBestDwellTimeMap, sizeOfTargetLayout));
+    cudaCheck(cudaMalloc((void **)&deviceDwellTimeCorrection, targetLayoutSizeBytes));
+    cudaCheck(cudaMalloc((void **)&deviceBestDwellTimeMap, targetLayoutSizeBytes));
 
     // Output Pointers
-    cudaCheck(cudaMalloc((void **)&deviceDwellTimeMap, sizeOfTargetLayout));
+    cudaCheck(cudaMalloc((void **)&deviceDwellTimeMap, targetLayoutSizeBytes));
 }
 
 
@@ -278,11 +280,11 @@ static void allocateMemory(void)
 **************************************************/
 static void copyDataToDevice(void)
 {
-    cudaCheck(cudaMemcpy(deviceTargetLayout, hostTargetLayout, sizeOfTargetLayout, cudaMemcpyHostToDevice));
-    cudaCheck(cudaMemcpy(devicePsfMask, hostPsfMask, sizeOfPsfMask, cudaMemcpyHostToDevice));
+    cudaCheck(cudaMemcpy(deviceTargetLayout, hostTargetLayout, targetLayoutSizeBytes, cudaMemcpyHostToDevice));
+    cudaCheck(cudaMemcpy(devicePsfMask, hostPsfMask, psfMaskSizeBytes, cudaMemcpyHostToDevice));
 
-    // Initialize dwell-time map using the target layout
-    cudaCheck(cudaMemcpy(deviceDwellTimeMap, deviceTargetLayout, sizeOfTargetLayout, cudaMemcpyDeviceToDevice));
+    // Initialize dwell time map using the target layout
+    cudaCheck(cudaMemcpy(deviceDwellTimeMap, deviceTargetLayout, targetLayoutSizeBytes, cudaMemcpyDeviceToDevice));
 }
 
 
@@ -299,12 +301,12 @@ static void runOptimization(void)
 
     for(uint iteration = 0; iteration < MAX_ITERATIONS; iteration++)
     {
-        // Deposited energy calculation
+        // Deposited energy calculation using current dwell time map
         convolveImage(
             deviceDwellTimeMap,
+            devicePsfMask,
             targetLayoutWidth,
             targetLayoutHeight,
-            devicePsfMask,
             deviceDepositedEnergy
         );
 
@@ -314,8 +316,8 @@ static void runOptimization(void)
             deviceDepositedEnergy,
             targetLayoutWidth,
             targetLayoutHeight,
-            deviceErrorMatrix,
-            deviceSquaredErrorSum
+            deviceSquaredErrorSum,
+            deviceErrorMatrix
         );
 
         // Determine whether current MSE is lowest
@@ -325,7 +327,7 @@ static void runOptimization(void)
             bestMSE = mse;
             bestIteration = iteration;
 
-            cudaCheck(cudaMemcpy(deviceBestDwellTimeMap, deviceDwellTimeMap, sizeOfTargetLayout, cudaMemcpyDeviceToDevice));
+            cudaCheck(cudaMemcpy(deviceBestDwellTimeMap, deviceDwellTimeMap, targetLayoutSizeBytes, cudaMemcpyDeviceToDevice));
         }
 
         // Logging data for iteration number and MSE value at these intervals:
@@ -345,16 +347,16 @@ static void runOptimization(void)
             break;
         }
 
-        // Calculate the dwell time
+        // Update the dwell time map using the current error
         updateDwellTime(
-            deviceDwellTimeMap,
             deviceErrorMatrix,
             devicePsfMask,
-            deviceDwellTimeCorrection,
             targetLayoutWidth,
             targetLayoutHeight,
             LEARNING_RATE,
-            MAX_DWELL_TIME
+            MAX_DWELL_TIME,
+            deviceDwellTimeCorrection,
+            deviceDwellTimeMap
         );
     }
 
@@ -370,10 +372,10 @@ static void runOptimization(void)
 
 static void copyResultsToHost(void)
 {
-    hostDwellTimeMap = (float *)malloc(sizeOfTargetLayout);
+    hostDwellTimeMap = (float *)malloc(targetLayoutSizeBytes);
 
     // Copy from device to host
-    cudaCheck(cudaMemcpy(hostDwellTimeMap, deviceBestDwellTimeMap, sizeOfTargetLayout, cudaMemcpyDeviceToHost));
+    cudaCheck(cudaMemcpy(hostDwellTimeMap, deviceBestDwellTimeMap, targetLayoutSizeBytes, cudaMemcpyDeviceToHost));
 
     // Store the results from host to a file
     wbExport(

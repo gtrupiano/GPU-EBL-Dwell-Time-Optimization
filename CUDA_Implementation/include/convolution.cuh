@@ -46,10 +46,13 @@ const uint CONVOLUTION_INPUT_TILE_WIDTH = (CONVOLUTION_OUTPUT_TILE_WIDTH + CONVO
 */
 
 void convolveImage(
+   // Inputs
    const float *deviceInputImage,
+   const float *devicePsfMask,
    uint imageWidth,
    uint imageHeight,
-   const float *devicePsfMask,
+
+   // Output
    float *deviceOutputImage
 );
 

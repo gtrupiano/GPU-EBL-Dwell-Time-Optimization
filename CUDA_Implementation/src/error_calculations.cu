@@ -47,29 +47,36 @@
 
 // Functions
 static void calculateErrorMatrix(
+    // Inputs
     const float *deviceTargetLayout,
     const float *deviceDepositedEnergy,
     uint imageWidth,
     uint imageHeight,
+
+    // Outputs
     float *deviceErrorMatrix,
     float *deviceSquaredErrorSum
 );
 
 static float calculateMSE(
-   const float *deviceSquaredErrorSum,
-   uint imageWidth,
-   uint imageHeight
+    // Inputs
+    const float *deviceSquaredErrorSum,
+    uint imageWidth,
+    uint imageHeight
 );
 
 
 // Kernels
 static __global__ void errorMatrixCalculationKernel(
-   const float *icLayout,
-   const float *depositedEnergy,
-   uint imageWidth,
-   uint imageHeight,
-   float *errorMatrix,
-   float *squaredErrorSum
+    // Inputs
+    const float *targetLayout,
+    const float *depositedEnergy,
+    uint imageWidth,
+    uint imageHeight,
+
+    // Outputs
+    float *errorMatrix,
+    float *squaredErrorSum
 );
 
 /*
@@ -84,12 +91,17 @@ static __global__ void errorMatrixCalculationKernel(
 **************************************************/
 
 float calculateError(
+	// Inputs
 	const float *deviceTargetLayout,
 	const float *deviceDepositedEnergy,
 	uint imageWidth,
 	uint imageHeight,
-	float *deviceErrorMatrix,
-	float *deviceSquaredErrorSum
+
+	// Intermediate
+	float *deviceSquaredErrorSum,
+
+	// Output
+	float *deviceErrorMatrix
 )
 {
 	calculateErrorMatrix(
@@ -123,11 +135,14 @@ float calculateError(
 **************************************************/
 
 static void calculateErrorMatrix(
+    // Inputs
 	const float *deviceTargetLayout,
 	const float *deviceDepositedEnergy,
 	uint imageWidth,
 	uint imageHeight,
-	float *deviceErrorMatrix,
+	
+    // Outputs
+    float *deviceErrorMatrix,
 	float *deviceSquaredErrorSum
 )
 {
@@ -163,6 +178,7 @@ static void calculateErrorMatrix(
 **************************************************/
 
 static float calculateMSE(
+    // Inputs
     const float *deviceSquaredErrorSum,
     uint imageWidth,
     uint imageHeight
@@ -197,12 +213,15 @@ static float calculateMSE(
 **************************************************/
 
 static __global__ void errorMatrixCalculationKernel(
-   const float *targetLayout,
-   const float *depositedEnergy,
-   uint imageWidth,
-   uint imageHeight,
-   float *errorMatrix,
-   float *squaredErrorSum
+    // Inputs
+    const float *targetLayout,
+    const float *depositedEnergy,
+    uint imageWidth,
+    uint imageHeight,
+
+    // Outputs
+    float *errorMatrix,
+    float *squaredErrorSum
 )
 {
 	// Each thread stores its squared error in shared memory but done in 1D for easy reduction

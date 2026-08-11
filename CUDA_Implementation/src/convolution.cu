@@ -45,11 +45,14 @@
 */
 
 static __global__ void convolutionKernel(
-   const float *inputImage,
-   uint imageWidth,
-   uint imageHeight,
-   const float *mask,
-   float *outputImage
+    // Inputs
+    const float *inputImage,
+    const float *mask,
+    uint imageWidth,
+    uint imageHeight,
+
+    // Output
+    float *outputImage
 );
 
 /*
@@ -64,10 +67,13 @@ static __global__ void convolutionKernel(
 **************************************************/
 
 void convolveImage(
+    // Inputs
     const float *deviceInputImage,
+    const float *devicePsfMask,
     uint imageWidth,
     uint imageHeight,
-    const float *devicePsfMask,
+
+    // Output
     float *deviceOutputImage
 )
 {
@@ -83,12 +89,12 @@ void convolveImage(
     dim3 numberOfBlocks(blocksPerDimX, blocksPerDimY, 1);
 
     convolutionKernel<<<numberOfBlocks, blockSize>>>(
-      deviceInputImage,
-      imageWidth,
-      imageHeight,
-      devicePsfMask,
-      deviceOutputImage
-   );
+        deviceInputImage,
+        devicePsfMask,
+        imageWidth,
+        imageHeight,
+        deviceOutputImage
+    );
 }
 
 
@@ -105,11 +111,14 @@ void convolveImage(
 **************************************************/
 
 static __global__ void convolutionKernel(
-   const float *inputImage,
-   uint imageWidth,
-   uint imageHeight,
-   const float *mask,
-   float *outputImage
+    // Inputs
+    const float *inputImage,
+    const float *mask,
+    uint imageWidth,
+    uint imageHeight,
+
+    // Output
+    float *outputImage
 )
 {
     // In order to compute convolution, additional values are needed in a given tile

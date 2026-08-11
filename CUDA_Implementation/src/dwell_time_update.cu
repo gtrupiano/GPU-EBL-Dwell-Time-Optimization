@@ -42,17 +42,20 @@
 
 /*
  **********************************************************************
- * LOCAL FUNCTION PROTOTYPES (declare as static)
+ * LOCAL FUNCTION / KERNEL PROTOTYPES (declare as static)
  **********************************************************************
 */
 
 static __global__ void dwellTimeUpdateKernel(
-    float *deviceDwellTimeMap,
-    const float *deviceDwellTimeCorrection,
+    // Inputs
+    const float *dwellTimeCorrection,
     uint imageWidth,
     uint imageHeight,
     float learningRate,
-    float maxDwellTime
+    float maxDwellTime,
+
+    // Input / Output
+    float *dwellTimeMap
 );
 
 /*
@@ -67,24 +70,28 @@ static __global__ void dwellTimeUpdateKernel(
 **************************************************/
 
 void updateDwellTime(
-    float *deviceDwellTimeMap,
+    // Inputs
     const float *deviceErrorMatrix,
     const float *devicePsfMask,
-    float *deviceDwellTimeCorrection,
     uint imageWidth,
     uint imageHeight,
     float learningRate,
-    float maxDwellTime
+    float maxDwellTime,
+    
+    // Intermediate
+    float *deviceDwellTimeCorrection,
+    
+    // Input / Output
+    float *deviceDwellTimeMap
 )
 {
-    // Calculate the dwell-time correction:
-    // dwellTimeCorrection = errorMap * PSF
-
+    // Calculate the dwell time correction:
+    // dwellTimeCorrection = error matrix convolved with PSF
     convolveImage(
         deviceErrorMatrix,
+        devicePsfMask,
         imageWidth,
         imageHeight,
-        devicePsfMask,
         deviceDwellTimeCorrection
     );
 
@@ -100,14 +107,15 @@ void updateDwellTime(
 	// establish number of blocks
 	dim3 dwellNumberOfBlocks(dwellBlocksPerDimX, dwellBlocksPerDimY, 1);
 
-	// launch kernel in host wrapper code
+	// Launch kernel in host wrapper code
+    // Dwell time map is updated in kernel
 	dwellTimeUpdateKernel<<<dwellNumberOfBlocks, dwellBlockSize>>>(
-        deviceDwellTimeMap,
         deviceDwellTimeCorrection,
         imageWidth,
         imageHeight,
         learningRate,
-        maxDwellTime
+        maxDwellTime,
+        deviceDwellTimeMap
     );
 }
 
@@ -116,14 +124,16 @@ void updateDwellTime(
  * Kernel: dwellTimeUpdateKernel
  * Description: 
 **************************************************/
+static __global__ void dwellTimeUpdateKernel(
+    // Inputs
+    const float *dwellTimeCorrection,
+    uint imageWidth,
+    uint imageHeight,
+    float learningRate,
+    float maxDwellTime,
 
-static __global__ void dwellTimeUpdateKernel(	
-	float *deviceDwellTimeMap, 
-	const float *deviceDwellTimeCorrection, 
-	uint imageWidth, 
-	uint imageHeight, 
-	float learningRate, 
-	float maxDwellTime
+    // Input / Output
+    float *dwellTimeMap
 )
 {
 	// find the 2D coordinates
@@ -136,10 +146,10 @@ static __global__ void dwellTimeUpdateKernel(
 	// boundary checking
 	if(rowIdx < imageHeight && colIdx < imageWidth)
     {  
-        float currentDwell = deviceDwellTimeMap[globalPixelIdx1D];
-        float dwellTimeCorrection = deviceDwellTimeCorrection[globalPixelIdx1D];
+        float currentDwell = dwellTimeMap[globalPixelIdx1D];
+        float currentDwellTimeCorrection = dwellTimeCorrection[globalPixelIdx1D];
 
-        float updatedDwell = currentDwell + (dwellTimeCorrection * learningRate);
+        float updatedDwell = currentDwell + (currentDwellTimeCorrection * learningRate);
         
         if(updatedDwell < 0.0f)
         {
@@ -151,6 +161,6 @@ static __global__ void dwellTimeUpdateKernel(
             updatedDwell = maxDwellTime;
         }
 
-        deviceDwellTimeMap[globalPixelIdx1D] = updatedDwell;
+        dwellTimeMap[globalPixelIdx1D] = updatedDwell;
     } 
 }
