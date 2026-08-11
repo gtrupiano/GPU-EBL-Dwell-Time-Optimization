@@ -1,7 +1,8 @@
 /*
 **********************************************************************
 	File Name: error_calculations.cu
-	Description:
+	Description: Implements CUDA error matrix calculation and mean
+    squared error calculation for evaluating the current deposited energy.
 **********************************************************************
 */
 
@@ -87,7 +88,9 @@ static __global__ void errorMatrixCalculationKernel(
 
 /**************************************************
  * Function: calculateError
- * Description: 
+ * Description: Calculates the error matrix and
+ * mean squared error between the target layout 
+ * and deposited energy.
 **************************************************/
 
 float calculateError(
@@ -125,13 +128,15 @@ float calculateError(
 
 /*
  **********************************************************************
- * LOCAL FUNCTIONS
+ * LOCAL FUNCTIONS / KERNELS
  **********************************************************************
 */
 
 /**************************************************
  * Function: calculateErrorMatrix
- * Description: 
+ * Description: Configures and launches the CUDA
+ * kernel used to calculate the error matrix and
+ * squared error sum.
 **************************************************/
 
 static void calculateErrorMatrix(
@@ -174,7 +179,8 @@ static void calculateErrorMatrix(
 
 /**************************************************
  * Function: calculateMSE
- * Description: 
+ * Description: Copies the squared error sum to the
+ * host and calculates the mean squared error.
 **************************************************/
 
 static float calculateMSE(
@@ -209,7 +215,10 @@ static float calculateMSE(
 
 /**************************************************
  * Kernel: errorMatrixCalculationKernel
- * Description: 
+ * Description: Calculates each pixel's exposure error
+ * and uses block level reduction to calculate a squared
+ * error sum for each block. Then accumulates the blocks
+ * sums into a total squared error sum.
 **************************************************/
 
 static __global__ void errorMatrixCalculationKernel(

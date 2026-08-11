@@ -1,7 +1,8 @@
 /*
 **********************************************************************
    File Name: convolution.cu
-   Description:
+   Description: Implements tiled CUDA convolution using shared memory 
+   to convolve an input image with a PSF mask.
 **********************************************************************
 */
 
@@ -62,8 +63,9 @@ static __global__ void convolutionKernel(
 */
 
 /**************************************************
-* Kernel: convolveImage
-* Description:
+* Function: convolveImage
+* Description: Configures the CUDA grid and block
+* dimensions and launches the convolution kernel.
 **************************************************/
 
 void convolveImage(
@@ -100,14 +102,15 @@ void convolveImage(
 
 /*
  **********************************************************************
- * LOCAL FUNCTIONS
+ * LOCAL FUNCTIONS / KERNELS
  **********************************************************************
 */
 
 
 /**************************************************
 * Kernel: convolutionKernel
-* Description:
+* Description: Performs tiled 2D convolution of an
+* input image with the PSF mask using shared memory.
 **************************************************/
 
 static __global__ void convolutionKernel(

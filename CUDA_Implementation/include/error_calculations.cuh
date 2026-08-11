@@ -1,8 +1,9 @@
 /*
- ******************************************************************************
+******************************************************************************
    File Name  : error_calculations.cuh
-   Description:
- ******************************************************************************
+   Description: Declares the API and constants used to calculate the exposure
+    error matrix and mean squared error.
+******************************************************************************
 */
   
 #ifndef ERROR_CALCULATIONS_CUH

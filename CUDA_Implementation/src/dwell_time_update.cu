@@ -1,7 +1,9 @@
 /*
 **********************************************************************
 	File Name: dwell_time_update.cu
-	Description:
+	Description: Implements dwell-time correction by convolving the
+    error matrix with the PSF and applying the correction to the dwell
+    time map.
 **********************************************************************
 */
 
@@ -66,7 +68,9 @@ static __global__ void dwellTimeUpdateKernel(
 
 /**************************************************
  * Function: updateDwellTime
- * Description: 
+ * Description: Calculates the dwell time correction
+ * using convolution and launches the kernel that
+ * updates the dwell time map.
 **************************************************/
 
 void updateDwellTime(
@@ -122,7 +126,9 @@ void updateDwellTime(
 
 /**************************************************
  * Kernel: dwellTimeUpdateKernel
- * Description: 
+ * Description: Applies the dwell time correction
+ * to each pixel and clamps the updated dwell
+ * time to an acceptable range.
 **************************************************/
 static __global__ void dwellTimeUpdateKernel(
     // Inputs

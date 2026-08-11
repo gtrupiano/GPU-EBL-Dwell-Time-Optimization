@@ -1,7 +1,8 @@
 /*
 ******************************************************************************
    File Name: convolution.cuh
-   Description:
+   Description: Declares the CUDA convolution API and constants used for
+   tiled convolution with the PSF mask.
 ******************************************************************************
 */
 

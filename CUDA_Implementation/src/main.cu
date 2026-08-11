@@ -1,7 +1,8 @@
 /*
 **********************************************************************
 	File Name: main.cu
-	Description:
+	Description: Manages program input, GPU memory, iterative dwell
+    time optimization algorithm, result transfer, and output.
 **********************************************************************
 */
 
@@ -123,7 +124,9 @@ static void cudaCheck(cudaError_t error);
 
 /**************************************************
  * Function: main
- * Description: 
+ * Description: Handles program initialization, CUDA
+ * component execution, result retrieval, output,
+ * and cleanup.
 **************************************************/
 
 int main(int argc, char **argv) 
@@ -190,7 +193,9 @@ int main(int argc, char **argv)
 
 /**************************************************
  * Function: loadInputs
- * Description: 
+ * Description: Loads the target layout and PSF mask
+ * from the input argument files and stores their
+ * dimensions.
 **************************************************/
 
 static void loadInputs(wbArg_t args)
@@ -231,7 +236,9 @@ static void loadInputs(wbArg_t args)
 
 /**************************************************
  * Function: verifyInputs
- * Description: 
+ * Description: Verifies that the loaded target 
+ * layout and PSF mask meet the required input
+ * dimensions and format.
 **************************************************/
 
 static bool verifyInputs(void)
@@ -262,7 +269,8 @@ static bool verifyInputs(void)
 
 /**************************************************
  * Function: allocateMemory
- * Description: 
+ * Description: Allocates GPU memory required for
+ * all needed device variables.
 **************************************************/
 
 static void allocateMemory(void)
@@ -285,7 +293,9 @@ static void allocateMemory(void)
 
 /**************************************************
  * Function: copyDataToDevice
- * Description: 
+ * Description: Copies the input data to GPU memory
+ * and initializes the dwell time map from the
+ * target layout.
 **************************************************/
 static void copyDataToDevice(void)
 {
@@ -299,7 +309,9 @@ static void copyDataToDevice(void)
 
 /**************************************************
  * Function: runOptimization
- * Description: 
+ * Description: Iteratively calculates deposited
+ * energy and error, updates dwell times, and tracks
+ * the lowest-MSE result.
 **************************************************/
 
 static void runOptimization(void)
@@ -376,7 +388,8 @@ static void runOptimization(void)
 
 /**************************************************
  * Function: copyResultsToHost
- * Description: 
+ * Description: Allocates host memory and copies the
+ * best dwell time map from GPU memory to host memory.
 **************************************************/
 
 static void copyResultsToHost(void)
@@ -389,8 +402,27 @@ static void copyResultsToHost(void)
 
 
 /**************************************************
+ * Function: exportOutput
+ * Description: Exports the optimized dwell time map
+ * from host memory to the specified output file.
+**************************************************/
+
+static void exportOutput(void)
+{
+    // Store the results from host to a file
+    wbExport(
+        outputDwellTimeFile,
+        hostDwellTimeMap,
+        targetLayoutHeight,
+        targetLayoutWidth
+    );
+}
+
+
+/**************************************************
  * Function: freeMemory
- * Description: 
+ * Description: Deallocates GPU and host memory as
+ * well as deletes the imported target-layout image.
 **************************************************/
 
 static void freeMemory(void)
@@ -419,27 +451,9 @@ static void freeMemory(void)
 
 
 /**************************************************
- * Function: exportOutput
- * Description: Exports the optimized dwell time map
- * from host memory to the specified output file.
-**************************************************/
-
-static void exportOutput(void)
-{
-    // Store the results from host to a file
-    wbExport(
-        outputDwellTimeFile,
-        hostDwellTimeMap,
-        targetLayoutHeight,
-        targetLayoutWidth
-    );
-}
-
-
-/**************************************************
  * Function: cudaCheck
- * Description: Helper function for verifying CUDA
- * API's executed properly
+ * Description: Checks output of CUDA runtime API
+ * and exits the program if an error occurred.
 **************************************************/
 
 static void cudaCheck(cudaError_t error)

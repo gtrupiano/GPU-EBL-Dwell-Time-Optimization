@@ -1,7 +1,8 @@
 /*
  ******************************************************************************
     File Name  : dwell_time_update.cuh
-    Description:
+    Description: Declares the API and constants used to calculate and apply
+    dwell-time corrections to the dwell-time map.
  ******************************************************************************
 */
   
