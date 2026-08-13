@@ -3,7 +3,7 @@ libwb/
 build/
 .vscode/
 
-# Python Proof of Concept Items
+# Python Sequential Implementation Items
 .DS_Store
 .venv
 __pycache__/

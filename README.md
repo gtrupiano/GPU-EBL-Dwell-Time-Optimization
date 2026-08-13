@@ -16,9 +16,10 @@ The source files need to be stored in the main directory of the repository.
 
 ```
 GPU-EBL-Dwell-Time-Optimization/
-├── Proof_Of_Concept/
+├── Sequential_Implementations/
 |   ├── MATLAB/
 |   ├── Python/
+    ├── C++/
 ├── CUDA_Implementation/
 |   ├── build/
 |   ├── include/

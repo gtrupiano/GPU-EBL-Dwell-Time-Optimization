@@ -33,7 +33,7 @@ def main():
 
     # The CUDA convolution kernel does not normalize the mask, so it is
     # normalized here to keep deposited energy on the same 0-to-1 scale as the
-    # IC layout (matching the Python proof-of-concept).
+    # IC layout (matching the Python sequential implementation).
     if not args.no_normalize:
         psf_mask = psf_mask / np.sum(psf_mask, dtype=np.float64)
 

@@ -6,7 +6,7 @@ Information regarding what the goal of the project is as well as what was done t
 2. IC layout needs to be a 1 channel .ppm image
     - Convert any image into the required `P5` .ppm with `convert_ic_to_ppm.py`
 3. The PSF mask must be a normalized 65x65 `.raw` file.
-   - Generate the PSF `.npy` with the Python proof of concept.
+   - Generate the PSF `.npy` with the Python sequential implementation.
    - Convert it with `convert_psf_to_raw.py`.
    - The converter normalizes the PSF and converts its values to `float32`.
 4. The CUDA output is a `.raw` file.
@@ -52,4 +52,4 @@ Information regarding what the goal of the project is as well as what was done t
             ```
             ./build/GPU_EBL_Dwell_Time_Optimization -i "./input_data/IC128.ppm,./input_data/PSF_Mask_100kV_1um-HSQ.raw" -o "output_data/optimized_dwell_time.raw" -t image
             ```
-    5. TODO: Create a test bench to compare CUDA results against the Python proof-of-concept results.
+    5. TODO: Create a test bench to compare CUDA results against the Python sequential implementation results.
