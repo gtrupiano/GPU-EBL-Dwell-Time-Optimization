@@ -31,13 +31,15 @@
 #define PSF_MASK_ARG_INDEX 1
 
 // Algorithm Parameters
-const uint MAX_ITERATIONS = 1000;
+const uint MAX_ITERATIONS = 100;
 const float MINIMUM_MSE = 0.001f;
-const float LEARNING_RATE = 0.1f;
-const float MAX_DWELL_TIME = 2.0f;
+const float LEARNING_RATE = 10.0f;
+const float LEARNING_RATE_DECAY = 0.99f;
+const float LEARNING_RATE_MINIMUM = 0.1f;
+const float MAX_DWELL_TIME = 5.0f;
 
 // Frequency of MSE Iteration Logging
-const uint MSE_ITERATION_LOG_INTERVAL = 50;
+const uint MSE_ITERATION_LOG_INTERVAL = 5;
 
 /*
  **********************************************************************
@@ -320,6 +322,7 @@ static void runOptimization(void)
     float mse = 0.0f;
     float bestMSE = FLT_MAX;
     uint bestIteration = 0;
+    float currentLearningRate = LEARNING_RATE;
 
     for(uint iteration = 0; iteration < MAX_ITERATIONS; iteration++)
     {
@@ -375,11 +378,22 @@ static void runOptimization(void)
             devicePsfMask,
             targetLayoutWidth,
             targetLayoutHeight,
-            LEARNING_RATE,
+            currentLearningRate,
             MAX_DWELL_TIME,
             deviceDwellTimeCorrection,
             deviceDwellTimeMap
         );
+
+        // Reduce the learning rate by 1% after each dwell time update.
+        // Larger steps are used early in optimization, while later iterations
+        // become progressively more conservative as the solution converges.
+        currentLearningRate *= LEARNING_RATE_DECAY;
+
+        // Constrain learning rate to minimum
+        if(currentLearningRate < LEARNING_RATE_MINIMUM)
+        {
+            currentLearningRate = LEARNING_RATE_MINIMUM;
+        }
     }
 
     // After all iterations, log of best MSE calculated
