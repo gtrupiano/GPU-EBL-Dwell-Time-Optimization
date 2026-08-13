@@ -154,8 +154,15 @@ static __global__ void dwellTimeUpdateKernel(
     {  
         float currentDwell = dwellTimeMap[globalPixelIdx1D];
         float currentDwellTimeCorrection = dwellTimeCorrection[globalPixelIdx1D];
+        
+        // Apply cubic sensitivity to the dwell-time correction.
+        // This suppresses small corrections while giving larger
+        // corrections more influence, while preserving the correction sign.
+        float sensitiveDwellTimeCorrection = currentDwellTimeCorrection * currentDwellTimeCorrection * currentDwellTimeCorrection;
 
-        float updatedDwell = currentDwell + (currentDwellTimeCorrection * learningRate);
+        // Scale the correction by the learning rate and apply it
+        // to the current dwell time.
+        float updatedDwell = currentDwell + (sensitiveDwellTimeCorrection * learningRate);
         
         if(updatedDwell < 0.0f)
         {
