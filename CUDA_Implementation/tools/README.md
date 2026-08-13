@@ -45,7 +45,7 @@ Also, examples are done with Linux syntax.
     
     Example:
     ```bash
-    python convert_ic_to_ppm.py ../../Proof_Of_Concept/Python/input_data/IC128.png --binarize
+    python convert_ic_to_ppm.py ../../Sequential_Implementations/Python/input_data/IC128.png --binarize
     ```
 
     **Explaination:** This will take the IC 128x128 image from the Python implementation (this is where all original data is stored) and convert it to `.ppm` format. Then it will be stored in `input_data` folder to be used for the actual CUDA Implementation.
@@ -59,7 +59,7 @@ Also, examples are done with Linux syntax.
 
     Example:
     ```bash
-    python convert_psf_to_raw.py --npy ../../Proof_Of_Concept/Python/output_data/double_gaussian_psf_2D.npy
+    python convert_psf_to_raw.py --npy ../../Sequential_Implementations/Python/output_data/double_gaussian_psf_2D.npy
     ```
 
     **Explaination:** This loads an existing PSF mask from a NumPy `.npy` file (this is where all original data is stored), verifies that it is 65x65 by default, normalizes the values so their sum is approximately 1, converts them to `float32` for the CUDA implementation, and writes the result to the CUDA `input_data` folder as a `.raw` file.
