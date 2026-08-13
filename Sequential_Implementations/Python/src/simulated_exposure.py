@@ -38,11 +38,8 @@ def main():
     ic_image = Image.open(args.ic_path).convert("1")
     ic_layout = np.asarray(ic_image, dtype=np.float64)
 
-    # Load the previously generated PSF mask.
-    psf_mask = np.load(args.psf_path)
-
-    # Keep deposited energy on approximately the same 0-to-1 scale as the IC.
-    psf_mask = psf_mask / np.sum(psf_mask)
+    # Load the same libwb PSF mask used by the CUDA and C++ implementations.
+    psf_mask = read_libwb_raw(args.psf_path)
 
     # Initially, expose the same locations as the desired IC layout.
 
@@ -128,6 +125,34 @@ def parse_arguments():
 
 
 ###############################################################################
+# Function Name: read_libwb_raw
+# Description:
+###############################################################################
+
+def read_libwb_raw(input_path):
+    with open(input_path, "r", encoding="utf-8") as file:
+        header = file.readline().split()
+
+        rows = int(header[0])
+        columns = int(header[1])
+
+        values = np.array(
+            file.read().split(),
+            dtype=np.float32
+        )
+
+    expected_values = rows * columns
+
+    if values.size != expected_values:
+        raise ValueError(
+            f"Expected {expected_values} PSF values, "
+            f"but found {values.size}."
+        )
+
+    return values.reshape(rows, columns)
+
+
+###############################################################################
 # Function Name: calculate_error_matrix
 # Description:
 ###############################################################################
@@ -166,6 +191,7 @@ def optimize_dwell_time(ic_layout, psf_mask, dwell_time_map):
     best_mse = float("inf") # Python trick to do infinitly large number
     best_iteration = 0
     best_dwell_time_map = None
+    current_learning_rate = constants.LEARNING_RATE
 
     image_height, image_width = dwell_time_map.shape
 
@@ -225,7 +251,10 @@ def optimize_dwell_time(ic_layout, psf_mask, dwell_time_map):
         # Update each dwell-time pixel using its corresponding error value.
         for row in range(image_height):
             for col in range(image_width):
-                dwell_time_map[row][col] += (constants.LEARNING_RATE * dwell_time_correction[row][col])
+                current_dwell_time_correction = dwell_time_correction[row][col]
+
+                sensitive_dwell_time_correction = (current_dwell_time_correction * current_dwell_time_correction * current_dwell_time_correction)
+                dwell_time_map[row][col] += (sensitive_dwell_time_correction * current_learning_rate)
 
                 # Keep the dwell time within its allowed range.
                 if dwell_time_map[row][col] < 0.0:
@@ -233,6 +262,11 @@ def optimize_dwell_time(ic_layout, psf_mask, dwell_time_map):
 
                 elif dwell_time_map[row][col] > constants.MAX_DWELL_TIME:
                     dwell_time_map[row][col] = constants.MAX_DWELL_TIME
+
+        current_learning_rate *= constants.LEARNING_RATE_DECAY
+
+        if current_learning_rate < constants.LEARNING_RATE_MINIMUM:
+            current_learning_rate = constants.LEARNING_RATE_MINIMUM
 
     return mse_history, best_mse, best_iteration, best_dwell_time_map
 

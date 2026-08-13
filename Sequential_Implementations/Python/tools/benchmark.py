@@ -22,7 +22,10 @@ import time
 TOOLS_DIRECTORY = Path(__file__).resolve().parent
 PYTHON_IMPLEMENTATION_DIRECTORY = TOOLS_DIRECTORY.parent
 SRC_DIRECTORY = PYTHON_IMPLEMENTATION_DIRECTORY / "src"
-INPUT_DATA_DIRECTORY = PYTHON_IMPLEMENTATION_DIRECTORY / "input_data"
+SEQUENTIAL_IMPLEMENTATIONS_DIRECTORY = PYTHON_IMPLEMENTATION_DIRECTORY.parent
+REPOSITORY_DIRECTORY = SEQUENTIAL_IMPLEMENTATIONS_DIRECTORY.parent
+
+INPUT_DATA_DIRECTORY = REPOSITORY_DIRECTORY / "CUDA_Implementation" / "input_data"
 BENCHMARK_RESULTS_DIRECTORY = TOOLS_DIRECTORY / "benchmark_results"
 
 # Algorithm Program Path
@@ -32,14 +35,21 @@ ALGORITHM_SCRIPT = SRC_DIRECTORY / "simulated_exposure.py"
 NPY_TO_PNG_SCRIPT = TOOLS_DIRECTORY / "convert_npy_to_png.py"
 
 # IC Layout Paths
-IC128_PATH = INPUT_DATA_DIRECTORY / "IC128.png"
-IC256_PATH = INPUT_DATA_DIRECTORY / "IC256.png"
-IC512_PATH = INPUT_DATA_DIRECTORY / "IC512.png"
+IC0_PATH = INPUT_DATA_DIRECTORY / "IC0.ppm"
+IC1_PATH = INPUT_DATA_DIRECTORY / "IC1.ppm"
+IC2_PATH = INPUT_DATA_DIRECTORY / "IC2.ppm"
+IC3_PATH = INPUT_DATA_DIRECTORY / "IC3.ppm"
+IC4_PATH = INPUT_DATA_DIRECTORY / "IC4.ppm"
+IC5_PATH = INPUT_DATA_DIRECTORY / "IC5.ppm"
+IC6_PATH = INPUT_DATA_DIRECTORY / "IC6.ppm"
+IC7_PATH = INPUT_DATA_DIRECTORY / "IC7.ppm"
+IC8_PATH = INPUT_DATA_DIRECTORY / "IC8.ppm"
 
 # PSF Mask Paths
-PSF_25KV_1UM_HSQ_PATH = INPUT_DATA_DIRECTORY / "PSF_Mask_25kV_1um-HSQ.npy"
-PSF_100KV_1UM_HSQ_PATH = INPUT_DATA_DIRECTORY / "PSF_Mask_100kV_1um-HSQ.npy"
-PSF_100KV_50NM_HSQ_PATH = INPUT_DATA_DIRECTORY / "PSF_Mask_100kV_50nm-HSQ.npy"
+PSF_0_PATH = INPUT_DATA_DIRECTORY / "PSF_0.raw"
+PSF_1_25KV_1UM_HSQ_PATH = INPUT_DATA_DIRECTORY / "PSF_1_25kV_1um-HSQ.raw"
+PSF_2_100KV_1UM_HSQ_PATH = INPUT_DATA_DIRECTORY / "PSF_2_100kV_1um-HSQ.raw"
+PSF_3_100KV_50NM_HSQ_PATH = INPUT_DATA_DIRECTORY / "PSF_3_100kV_50nm-HSQ.raw"
 
 
 # Result Paths
@@ -47,31 +57,76 @@ BENCHMARK_RESULTS_PATH = BENCHMARK_RESULTS_DIRECTORY / "benchmark_results.csv"
 
 MSE_HISTORY_PATH = BENCHMARK_RESULTS_DIRECTORY / "mse_history.csv"
 
+# Control whether extended datasets should be tested
+EXTENDED_DATASETS = False
 
 # Benchmark Datasets
-DATASETS = [
-    ("IC128_25kV_1um-HSQ", IC128_PATH, PSF_25KV_1UM_HSQ_PATH),
-    ("IC128_100kV_1um-HSQ", IC128_PATH, PSF_100KV_1UM_HSQ_PATH),
-    ("IC128_100kV_50nm-HSQ", IC128_PATH, PSF_100KV_50NM_HSQ_PATH),
+if EXTENDED_DATASETS is True:
+    DATASETS = [
+        ("IC0_PSF_0", IC0_PATH, PSF_0_PATH),
+        ("IC1_PSF_0", IC1_PATH, PSF_0_PATH),
+        ("IC2_PSF_0", IC2_PATH, PSF_0_PATH),
+        ("IC3_PSF_0", IC3_PATH, PSF_0_PATH),
+        ("IC4_PSF_0", IC4_PATH, PSF_0_PATH),
+        ("IC5_PSF_0", IC5_PATH, PSF_0_PATH),
+        ("IC6_PSF_0", IC6_PATH, PSF_0_PATH),
+        ("IC7_PSF_0", IC7_PATH, PSF_0_PATH),
+        ("IC8_PSF_0", IC8_PATH, PSF_0_PATH),
 
-    ("IC256_25kV_1um-HSQ", IC256_PATH, PSF_25KV_1UM_HSQ_PATH),
-    ("IC256_100kV_1um-HSQ", IC256_PATH, PSF_100KV_1UM_HSQ_PATH),
-    ("IC256_100kV_50nm-HSQ", IC256_PATH, PSF_100KV_50NM_HSQ_PATH),
+        ("IC0_PSF_1", IC0_PATH, PSF_1_25KV_1UM_HSQ_PATH),
+        ("IC1_PSF_1", IC1_PATH, PSF_1_25KV_1UM_HSQ_PATH),
+        ("IC2_PSF_1", IC2_PATH, PSF_1_25KV_1UM_HSQ_PATH),
+        ("IC3_PSF_1", IC3_PATH, PSF_1_25KV_1UM_HSQ_PATH),
+        ("IC4_PSF_1", IC4_PATH, PSF_1_25KV_1UM_HSQ_PATH),
+        ("IC5_PSF_1", IC5_PATH, PSF_1_25KV_1UM_HSQ_PATH),
+        ("IC6_PSF_1", IC6_PATH, PSF_1_25KV_1UM_HSQ_PATH),
+        ("IC7_PSF_1", IC7_PATH, PSF_1_25KV_1UM_HSQ_PATH),
+        ("IC8_PSF_1", IC8_PATH, PSF_1_25KV_1UM_HSQ_PATH),
 
-    ("IC512_25kV_1um-HSQ", IC512_PATH, PSF_25KV_1UM_HSQ_PATH),
-    ("IC512_100kV_1um-HSQ", IC512_PATH, PSF_100KV_1UM_HSQ_PATH),
-    ("IC512_100kV_50nm-HSQ", IC512_PATH, PSF_100KV_50NM_HSQ_PATH),
-]
+        ("IC0_PSF_2", IC0_PATH, PSF_2_100KV_1UM_HSQ_PATH),
+        ("IC1_PSF_2", IC1_PATH, PSF_2_100KV_1UM_HSQ_PATH),
+        ("IC2_PSF_2", IC2_PATH, PSF_2_100KV_1UM_HSQ_PATH),
+        ("IC3_PSF_2", IC3_PATH, PSF_2_100KV_1UM_HSQ_PATH),
+        ("IC4_PSF_2", IC4_PATH, PSF_2_100KV_1UM_HSQ_PATH),
+        ("IC5_PSF_2", IC5_PATH, PSF_2_100KV_1UM_HSQ_PATH),
+        ("IC6_PSF_2", IC6_PATH, PSF_2_100KV_1UM_HSQ_PATH),
+        ("IC7_PSF_2", IC7_PATH, PSF_2_100KV_1UM_HSQ_PATH),
+        ("IC8_PSF_2", IC8_PATH, PSF_2_100KV_1UM_HSQ_PATH),
+
+        ("IC0_PSF_3", IC0_PATH, PSF_3_100KV_50NM_HSQ_PATH),
+        ("IC1_PSF_3", IC1_PATH, PSF_3_100KV_50NM_HSQ_PATH),
+        ("IC2_PSF_3", IC2_PATH, PSF_3_100KV_50NM_HSQ_PATH),
+        ("IC3_PSF_3", IC3_PATH, PSF_3_100KV_50NM_HSQ_PATH),
+        ("IC4_PSF_3", IC4_PATH, PSF_3_100KV_50NM_HSQ_PATH),
+        ("IC5_PSF_3", IC5_PATH, PSF_3_100KV_50NM_HSQ_PATH),
+        ("IC6_PSF_3", IC6_PATH, PSF_3_100KV_50NM_HSQ_PATH),
+        ("IC7_PSF_3", IC7_PATH, PSF_3_100KV_50NM_HSQ_PATH),
+        ("IC8_PSF_3", IC8_PATH, PSF_3_100KV_50NM_HSQ_PATH),
+    ]
+else:
+    DATASETS = [
+            ("IC0_PSF_0", IC0_PATH, PSF_0_PATH),
+            ("IC1_PSF_0", IC1_PATH, PSF_0_PATH),
+            ("IC2_PSF_0", IC2_PATH, PSF_0_PATH),
+            ("IC3_PSF_0", IC3_PATH, PSF_0_PATH),
+            ("IC4_PSF_0", IC4_PATH, PSF_0_PATH),
+            ("IC5_PSF_0", IC5_PATH, PSF_0_PATH),
+            ("IC6_PSF_0", IC6_PATH, PSF_0_PATH),
+            ("IC7_PSF_0", IC7_PATH, PSF_0_PATH),
+            ("IC8_PSF_0", IC8_PATH, PSF_0_PATH)
+    ]
 
 # Benchmarking Parameters
 # How many times the same dataset is executed. This is used for the average amount of execution time
 NUMBER_OF_TRIALS = 10
 
-# Algorithm parameters from CUDA code (UPDATE FROM main.cu)
-MAX_ITERATIONS = 1000
+# Algorithm parameters from sequential.cpp (UPDATE FROM constants.py)
+MAX_ITERATIONS = 100
 MINIMUM_MSE = 0.001
-LEARNING_RATE = 0.1
-MAX_DWELL_TIME = 2.0
+LEARNING_RATE = 10.0
+LEARNING_RATE_DECAY = 0.99
+LEARNING_RATE_MINIMUM = 0.1
+MAX_DWELL_TIME = 5.0
 
 ###############################################################################
 # GLOBAL VARIABLES
@@ -283,6 +338,8 @@ def process_dataset_results(dataset_results):
             "Max_Iterations": MAX_ITERATIONS,
             "Minimum_MSE": MINIMUM_MSE,
             "Learning_Rate": LEARNING_RATE,
+            "Learning_Rate_Decay": LEARNING_RATE_DECAY,
+            "Learning_Rate_Minimum": LEARNING_RATE_MINIMUM,
             "Max_Dwell_Time": MAX_DWELL_TIME,
 
             "Average_Optimization_Time_(ms)": average_optimization_time,
@@ -316,6 +373,8 @@ def write_results(benchmark_results, mse_history):
                 "Max_Iterations",
                 "Minimum_MSE",
                 "Learning_Rate",
+                "Learning_Rate_Decay",
+                "Learning_Rate_Minimum",
                 "Max_Dwell_Time",
 
                 "Average_Optimization_Time_(ms)",
