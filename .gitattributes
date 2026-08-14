@@ -1,2 +1,4 @@
-# Auxiliary Python tools are not part of the primary implementation
+# Benchmark Python tools are not part of the primary implementation
 CUDA_Implementation/tools/** -linguist-detectable
+Sequential_Implementations/Python/tools/** -linguist-detectable
+Sequential_Implementations/C++/tools/** -linguist-detectable
