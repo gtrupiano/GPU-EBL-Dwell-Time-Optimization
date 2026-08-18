@@ -82,6 +82,9 @@ Main handles the overall application execution:
 
   ### Dwell Time Update
 
+  ![Update_Dwell_Time](../docs/Flow_Diagrams/GPU_EBL_Update_Dwell_Time_Flow_Diagram.png)
+  ![Dwell_Time_Kernel](../docs/Flow_Diagrams/GPU_EBL_Dwell_Time_Update_Kernel_Flow_Diagram.png)
+
   Updating the dwell time is done in two steps:
 
   1. Convolving the error matrix with the PSF mask. This calculates how much the current dwell time map needs to be corrected

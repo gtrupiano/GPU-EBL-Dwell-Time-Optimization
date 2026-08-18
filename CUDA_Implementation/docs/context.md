@@ -52,4 +52,4 @@ Information regarding what the goal of the project is as well as what was done t
             ```
             ./build/GPU_EBL_Dwell_Time_Optimization -i "./input_data/IC128.ppm,./input_data/PSF_Mask_100kV_1um-HSQ.raw" -o "output_data/optimized_dwell_time.raw" -t image
             ```
-    5. TODO: Create a test bench to compare CUDA results against the Python sequential implementation results.
+    5. Run `benchmark.py` to log CUDA results.
